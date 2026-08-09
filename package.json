@@ -5,6 +5,8 @@
   "main": "index.js",
   "scripts": {
     "dev": "pnpm --filter web dev",
+    "app": "pnpm --filter mobile start",
+    "app:android": "pnpm --filter mobile android",
     "lint": "pnpm --filter web lint",
     "dbg": "pnpm --filter db dbg",
     "dbm": "pnpm --filter db dbm",
@@ -24,5 +26,9 @@
   "type": "module",
   "devDependencies": {
     "typescript": "^5.9.3"
+  },
+  "dependencies": {
+    "@types/connect": "^3.4.38",
+    "connect": "^3.7.0"
   }
 }

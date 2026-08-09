@@ -1,17 +1,21 @@
-import { Text, View, StyleSheet } from "react-native";
+import { Redirect } from "expo-router";
+import { useSession } from "@/lib/auth-client";
+import { View, ActivityIndicator } from "react-native";
 
 export default function Index() {
-  return (
-    <View style={styles.container}>
-      <Text>Edit src/app/index.tsx to edit this screen.</Text>
-    </View>
-  );
-}
+  const { data: session, isPending } = useSession();
 
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-});
+  if (isPending) {
+    return (
+      <View style={{ flex: 1, justifyContent: "center", alignItems: "center" }}>
+        <ActivityIndicator size="large" color="#FC4C02" />
+      </View>
+    );
+  }
+
+  if (session) {
+    return <Redirect href={"/(app)/dashboard" as any} />;
+  }
+
+  return <Redirect href={"/(auth)/sign-in" as any} />;
+}
