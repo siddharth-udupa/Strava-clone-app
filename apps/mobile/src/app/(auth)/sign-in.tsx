@@ -1,66 +1,62 @@
-import { useState } from "react";
-import {
-  View,
-  Text,
-  TextInput,
-  TouchableOpacity,
-  KeyboardAvoidingView,
-  Platform,
-  ScrollView,
-  ActivityIndicator,
-  Alert,
-} from "react-native";
-import { useRouter } from "expo-router";
-import { signIn, signUp } from "@/lib/auth-client";
+import { useState } from "react"
+import { View, Text, TextInput, TouchableOpacity, KeyboardAvoidingView, Platform, ScrollView, ActivityIndicator, Alert } from "react-native"
+import { useRouter } from "expo-router"
+import { signIn, signUp } from "@/lib/auth-client"
 
-type Tab = "signin" | "signup";
+type Tab = "signin" | "signup"
 
 export default function SignInScreen() {
-  const [tab, setTab] = useState<Tab>("signin");
-  const [name, setName] = useState("");
-  const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
-  const [loading, setLoading] = useState(false);
-  const router = useRouter();
+  const [tab, setTab] = useState<Tab>("signin")
+  const [name, setName] = useState("")
+  const [email, setEmail] = useState("")
+  const [password, setPassword] = useState("")
+  const [loading, setLoading] = useState(false)
+  const router = useRouter()
 
   const handleSubmit = async () => {
     if (!email || !password || (tab === "signup" && !name)) {
-      Alert.alert("Missing fields", "Please fill in all fields.");
-      return;
+      Alert.alert("Missing fields", "Please fill in all fields.")
+      return
     }
 
-    setLoading(true);
+    setLoading(true)
     try {
       if (tab === "signup") {
-        const { error } = await signUp.email({ name, email, password });
+        const { error } = await signUp.email({ name, email, password })
         if (error) {
-          Alert.alert("Sign Up Failed", error.message ?? "Something went wrong");
-          return;
+          Alert.alert("Sign Up Failed", error.message ?? "Something went wrong")
+          return
         }
       } else {
-        const { error } = await signIn.email({ email, password });
+        const { error } = await signIn.email({ email, password })
         if (error) {
-          Alert.alert("Sign In Failed", error.message ?? "Something went wrong");
-          return;
+          Alert.alert("Sign In Failed", error.message ?? "Something went wrong")
+          return
         }
       }
-    } catch (err) {
-      Alert.alert("Error", err instanceof Error ? err.message : "An unexpected error occurred");
-    } finally {
-      setLoading(false);
+      router.push("/(app)/dashboard")
     }
-  };
+    catch (err) {
+      Alert.alert("Error", err instanceof Error ? err.message : "An unexpected error occurred")
+    }
+    finally {
+      setLoading(false)
+    }
+  }
 
   const handleGoogleSignIn = async () => {
-    setLoading(true);
+    setLoading(true)
     try {
-      await signIn.social({ provider: "google", callbackURL: "/dashboard" });
-    } catch (err) {
-      Alert.alert("OAuth Error", err instanceof Error ? err.message : "Google sign-in failed");
-    } finally {
-      setLoading(false);
+      await signIn.social({ provider: "google", callbackURL: "/dashboard" })
+      router.push("/(app)/dashboard")
     }
-  };
+    catch (err) {
+      Alert.alert("OAuth Error", err instanceof Error ? err.message : "Google sign-in failed")
+    }
+    finally {
+      setLoading(false)
+    }
+  }
 
   return (
     <KeyboardAvoidingView
@@ -180,5 +176,5 @@ export default function SignInScreen() {
         </View>
       </ScrollView>
     </KeyboardAvoidingView>
-  );
+  )
 }
