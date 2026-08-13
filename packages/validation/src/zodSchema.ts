@@ -24,7 +24,7 @@ export const MetaDataSchema = z.object({
 
 export const UploadFileSchema = z.object({
   title: z.string().min(1).max(100),
-  description: z.string().max(1000),
+  description: z.string().max(1000).nullable(),
   file: z.file(),
 })
 

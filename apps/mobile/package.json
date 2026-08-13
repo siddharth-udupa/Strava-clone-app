@@ -5,6 +5,7 @@
   "dependencies": {
     "@better-auth/expo": "^1.6.26",
     "@expo/ui": "~57.0.9",
+    "@expo/vector-icons": "^15.1.1",
     "@types/connect": "^3.4.38",
     "better-auth": "^1.6.26",
     "connect": "^3.7.0",

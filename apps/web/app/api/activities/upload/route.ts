@@ -58,7 +58,7 @@ export async function POST(req: NextRequest) {
       maxSpeedMps: stats.maxSpeedMps,
       encodedPolyline,
       startTime: (stats.startTime ?? new Date()),
-      endTime: (stats.endTime?? new Date()),
+      endTime: (stats.endTime ?? new Date()),
     })
 
     await CreateActivityStreams({
