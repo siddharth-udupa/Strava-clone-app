@@ -17,7 +17,6 @@ export async function GET(req: NextRequest) {
     const limit = Number(searchParams.get("limit") ?? 5)
     const offset = page * limit
     const data = await getActivitiesByUser(userId, limit, offset)
-console.log(data, userId)
     return NextResponse.json(data)
   }
   catch (err) {

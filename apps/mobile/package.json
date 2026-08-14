@@ -4,6 +4,9 @@
   "version": "1.0.0",
   "dependencies": {
     "@better-auth/expo": "^1.6.26",
+    "@repo/gpx": "workspace:*",
+    "@repo/units": "workspace:*",
+    "@repo/validation": "workspace:*",
     "@expo/ui": "~57.0.9",
     "@expo/vector-icons": "^15.1.1",
     "@types/connect": "^3.4.38",
@@ -37,6 +40,7 @@
     "react-native-worklets": "0.10.1"
   },
   "devDependencies": {
+    "@repo/types": "workspace:*",
     "@types/react": "~19.2.18",
     "tailwindcss": "^3.4.19",
     "typescript": "~6.0.3"

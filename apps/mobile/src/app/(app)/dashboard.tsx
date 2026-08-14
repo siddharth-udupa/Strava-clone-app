@@ -5,85 +5,21 @@ import { useSession, signOut } from "@/lib/auth-client"
 import { Redirect } from "expo-router"
 import { Ionicons } from "@expo/vector-icons"
 import ActivityFeed from "@/components/ActivityFeed"
-import { ActivityItem } from "@/components/ActivtyCard"
+import { useActivities } from "@/hooks/useActivities"
 
 type ActiveTabType = "home" | "maps" | "record" | "groups" | "you"
 
-// Mock Activity Data for Mobile Feed
-const MOCK_ACTIVITIES: ActivityItem[] = [
-  {
-    id: "act-1",
-    user: {
-      name: "Alex Rivera",
-      avatar: "https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&auto=format&fit=crop&q=80",
-      location: "San Francisco, California",
-    },
-    timestamp: "Today at 7:30 AM",
-    type: "Run",
-    title: "Morning Golden Gate Loop 🏃💨",
-    stats: {
-      distance: "10.42 km",
-      paceOrSpeed: "4:48 /km",
-      time: "50m 02s",
-      elevation: "142 m",
-    },
-    kudosCount: 24,
-    commentsCount: 5,
-    isKudosed: false,
-    hasMapPreview: true,
-  },
-  {
-    id: "act-2",
-    user: {
-      name: "Sarah Chen",
-      avatar: "https://images.unsplash.com/photo-1517841905240-472988babdf9?w=150&auto=format&fit=crop&q=80",
-      location: "Marin Headlands",
-    },
-    timestamp: "Yesterday at 5:15 PM",
-    type: "Ride",
-    title: "Hawk Hill Repeat Sunset Session 🚴‍♀️🌄",
-    stats: {
-      distance: "32.8 km",
-      paceOrSpeed: "26.4 km/h",
-      time: "1h 14m",
-      elevation: "610 m",
-    },
-    kudosCount: 42,
-    commentsCount: 8,
-    isKudosed: true,
-    hasMapPreview: true,
-  },
-  {
-    id: "act-3",
-    user: {
-      name: "Marcus Vance",
-      avatar: "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=150&auto=format&fit=crop&q=80",
-      location: "Redwood National Park",
-    },
-    timestamp: "2 days ago",
-    type: "Hike",
-    title: "Trail Exploring & Ridge Views 🥾🌲",
-    stats: {
-      distance: "8.15 km",
-      paceOrSpeed: "12:30 /km",
-      time: "1h 41m",
-      elevation: "380 m",
-    },
-    kudosCount: 18,
-    commentsCount: 2,
-    isKudosed: false,
-    hasMapPreview: true,
-  },
-]
 
 export default function DashboardScreen() {
   const { data: session } = useSession()
   const insets = useSafeAreaInsets()
   const [activeTab, setActiveTab] = useState<ActiveTabType>("home")
-
+  
   if (!session) {
     return <Redirect href={"/(auth)/sign-in" as any} />
   }
+  
+  const { activities, isLoading, refreshing, error, refetch } = useActivities(session?.user.id)
 
   const handleSignOut = async () => {
     await signOut()
@@ -102,12 +38,25 @@ export default function DashboardScreen() {
           <Text className="text-[#FC5200] text-2xl font-black tracking-wider">
             STRAVA - CLONE
           </Text>
+          <View className="flex-row items-center space-x-3">
+            <TouchableOpacity
+              onPress={handleSignOut}
+              className="p-2 rounded-full bg-red-500/20 border border-red-500/40"
+            >
+              <Ionicons name="log-out-outline" size={18} color="#EF4444" />
+            </TouchableOpacity>
+          </View>
         </View>
       </View>
 
+
       {/* SEPARATED ACTIVITY FEED COMPONENT */}
       <ActivityFeed
-        activities={MOCK_ACTIVITIES}
+        activities={activities}
+        isLoading={isLoading}
+        refreshing={refreshing}
+        onRefresh={refetch}
+        error={error}
         contentContainerStyle={{ paddingBottom: insets.bottom + 70 }}
       />
 
@@ -117,8 +66,8 @@ export default function DashboardScreen() {
 }
 
 function BottomBar(
-  {insets, activeTab, setActiveTab }: 
-  { insets: EdgeInsets, activeTab: ActiveTabType, setActiveTab: React.Dispatch<React.SetStateAction<ActiveTabType>> }) {
+  { insets, activeTab, setActiveTab }:
+    { insets: EdgeInsets, activeTab: ActiveTabType, setActiveTab: React.Dispatch<React.SetStateAction<ActiveTabType>> }) {
   return (
     <View
       style={{ paddingBottom: Math.max(insets.bottom, 25) }}

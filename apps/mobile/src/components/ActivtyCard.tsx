@@ -1,48 +1,34 @@
-import React from "react"
 import { View, Text, TouchableOpacity, Image } from "react-native"
 import { Ionicons, MaterialCommunityIcons, Feather } from "@expo/vector-icons"
+import type { ActivityCardType } from "@repo/types"
+import { toDateAndTime } from "@repo/units"
 
-export interface ActivityItem {
-  id: string
-  user: {
-    name: string
-    avatar: string
-    location: string
-  }
-  timestamp: string
-  type: "Run" | "Ride" | "Hike" | "Walk" | string
-  title: string
-  description?: string
-  stats: {
-    distance: string
-    paceOrSpeed: string
-    time: string
-    elevation: string
-  }
-  kudosCount: number
-  commentsCount: number
-  isKudosed?: boolean
-  hasMapPreview?: boolean
-}
 
 interface ActivityCardProps {
-  activity: ActivityItem
+  activity: ActivityCardType
 }
 
 export default function ActivtyCard({ activity }: ActivityCardProps) {
+  let elev = { name: "", value: 0 }
+  if (activity.elevationGain > activity.elevationLoss) {
+    elev = { name: "Elev Gain", value: activity.elevationGain }
+  } else {
+    elev = { name: "Elev Loss", value: activity.elevationLoss }
+  }
+
   return (
     <View className="bg-slate-900 mb-3 border-y border-slate-800/80">
       {/* Card Header: Avatar + User Details */}
       <View className="flex-row items-center justify-between p-4 pb-2">
         <View className="flex-row items-center flex-1">
           <Image
-            source={{ uri: activity.user.avatar }}
+            source={{ uri: "../../../../web/public/temphoto.png" }}
             className="w-11 h-11 rounded-full bg-slate-800"
           />
           <View className="ml-3 flex-1">
             <View className="flex-row items-center">
               <Text className="text-white font-bold text-base mr-2">
-                {activity.user.name}
+                {activity.userName}
               </Text>
               <View className="bg-slate-800 px-2 py-0.5 rounded-md flex-row items-center">
                 {activity.type === "Run" && (
@@ -60,7 +46,7 @@ export default function ActivtyCard({ activity }: ActivityCardProps) {
               </View>
             </View>
             <Text className="text-gray-400 text-xs mt-0.5">
-              {activity.timestamp} • {activity.user.location}
+               • Location
             </Text>
           </View>
         </View>
@@ -81,7 +67,7 @@ export default function ActivtyCard({ activity }: ActivityCardProps) {
         <View>
           <Text className="text-gray-400 text-xs uppercase font-medium">Distance</Text>
           <Text className="text-white text-xl font-black mt-0.5">
-            {activity.stats.distance}
+            {activity.distance}
           </Text>
         </View>
         <View>
@@ -89,25 +75,25 @@ export default function ActivtyCard({ activity }: ActivityCardProps) {
             {activity.type === "Ride" ? "Avg Speed" : "Pace"}
           </Text>
           <Text className="text-white text-xl font-black mt-0.5">
-            {activity.stats.paceOrSpeed}
+            activity.pace
           </Text>
         </View>
         <View>
           <Text className="text-gray-400 text-xs uppercase font-medium">Time</Text>
           <Text className="text-white text-xl font-black mt-0.5">
-            {activity.stats.time}
+            {activity.duration}
           </Text>
         </View>
         <View>
           <Text className="text-gray-400 text-xs uppercase font-medium">Elev Gain</Text>
           <Text className="text-white text-xl font-black mt-0.5">
-            {activity.stats.elevation}
+            {activity.elevationGain}
           </Text>
         </View>
       </View>
 
       {/* Map Polyline Visual Mockup */}
-      {activity.hasMapPreview && (
+      {activity.encodedPolyline && (
         <View className="h-44 bg-slate-950 my-1 justify-center items-center relative overflow-hidden">
           <View className="absolute inset-0 opacity-20 bg-slate-800" />
           <View className="w-full h-full items-center justify-center">
@@ -127,13 +113,12 @@ export default function ActivtyCard({ activity }: ActivityCardProps) {
           className="flex-row items-center py-1 px-4 rounded-md"
         >
           <Ionicons
-            name={activity.isKudosed ? "thumbs-up" : "thumbs-up-outline"}
+            name={"thumbs-up-outline"}
             size={18}
-            color={activity.isKudosed ? "#FC5200" : "#94A3B8"}
+            color={"#94A3B8"}
           />
-          <Text
-            className={`text-xs font-bold ml-2 ${activity.isKudosed ? "text-[#FC5200]" : "text-gray-400"
-              }`} >Kudos</Text>
+          <Text 
+            className={"text-xs font-bold ml-2 text-gray-400"}>Kudos</Text> 
         </TouchableOpacity>
 
         <TouchableOpacity className="flex-row items-center py-1 px-4 rounded-md">

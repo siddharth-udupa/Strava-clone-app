@@ -1,26 +1,60 @@
-import { FlatList, TouchableOpacity, View, Text } from "react-native"
-import ActivtyCard, { ActivityItem } from "./ActivtyCard"
+import { FlatList, TouchableOpacity, View, Text, ActivityIndicator } from "react-native"
+import ActivtyCard from "./ActivtyCard"
 import { Ionicons } from "@expo/vector-icons"
+import type { ActivityCardType } from "@repo/types"
 
 interface ActivityFeedProps {
-  activities: ActivityItem[]
+  activities: ActivityCardType[]
   contentContainerStyle?: any
+  refreshing?: boolean
+  onRefresh?: () => void
+  isLoading?: boolean
+  error?: string | null
 }
 
 export default function ActivityFeed({
   activities,
   contentContainerStyle,
+  refreshing = false,
+  onRefresh,
+  isLoading = false,
+  error = null,
 }: ActivityFeedProps) {
+  if (isLoading && activities.length === 0) {
+    return (
+      <View className="flex-1 justify-center items-center p-8">
+        <ActivityIndicator size="large" color="#FC5200" />
+        <Text className="text-slate-400 text-sm mt-3 font-medium">Loading activities...</Text>
+      </View>
+    )
+  }
+
   return (
     <FlatList
       data={activities}
-      keyExtractor={(item) => item.id}
+      keyExtractor={(item) => item.activityId}
       renderItem={({ item }) => (
         <ActivtyCard activity={item} />
       )}
       ListHeaderComponent={ListHeaderComponent}
+      ListEmptyComponent={
+        error ? (
+          <View className="p-8 items-center justify-center">
+            <Text className="text-red-400 text-sm text-center font-medium">{error}</Text>
+          </View>
+        ) : (
+          <View className="p-8 items-center justify-center">
+            <Ionicons name="fitness-outline" size={48} color="#64748B" />
+            <Text className="text-slate-400 text-sm mt-2 text-center font-medium">
+              No activities found yet.
+            </Text>
+          </View>
+        )
+      }
       showsVerticalScrollIndicator={false}
       contentContainerStyle={contentContainerStyle}
+      refreshing={refreshing}
+      onRefresh={onRefresh}
     />
   )
 }
