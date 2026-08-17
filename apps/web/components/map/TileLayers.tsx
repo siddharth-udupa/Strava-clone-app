@@ -1,5 +1,5 @@
 import { LayersControl, TileLayer } from "react-leaflet";
-import { TileProvider } from "./TileProvider";
+import { TileProvider } from "../../../shared/TileProvider";
 
 
 export function TileLayers({ isChangeable }: { isChangeable: boolean }) {

@@ -2,7 +2,35 @@ import { View, Text, TouchableOpacity, Image } from "react-native"
 import { Ionicons, MaterialCommunityIcons, Feather } from "@expo/vector-icons"
 import type { ActivityCardType } from "@repo/types"
 import { toDateAndTime } from "@repo/units"
+import React, { Component, lazy, Suspense } from "react"
 
+// Lazy-import ActivityMap so MapLibre's native TurboModule registration
+// (MLRNCameraModule) only happens when the component actually tries to render,
+// NOT at module-evaluation time. This prevents the crash from cascading up to
+// dashboard.tsx and making it appear to have no default export.
+const ActivityMap = lazy(() => import("./ActivityMap"))
+
+// Error boundary — contains any native-module crash inside the map area only.
+// The rest of the card (and the entire feed) keeps rendering normally.
+interface MapBoundaryState { hasError: boolean }
+class MapErrorBoundary extends Component<
+  { children: React.ReactNode },
+  MapBoundaryState
+> {
+  state: MapBoundaryState = { hasError: false }
+
+  static getDerivedStateFromError(): MapBoundaryState {
+    return { hasError: true }
+  }
+
+  render() {
+    if (this.state.hasError) {
+      // Silent fallback — no map shown, card still fully functional
+      return null
+    }
+    return this.props.children
+  }
+}
 
 interface ActivityCardProps {
   activity: ActivityCardType
@@ -92,19 +120,17 @@ export default function ActivtyCard({ activity }: ActivityCardProps) {
         </View>
       </View>
 
-      {/* Map Polyline Visual Mockup */}
+      {/* Real Map — lazy + error-bounded so native crashes don't take down the feed */}
       {activity.encodedPolyline && (
-        <View className="h-44 bg-slate-950 my-1 justify-center items-center relative overflow-hidden">
-          <View className="absolute inset-0 opacity-20 bg-slate-800" />
-          <View className="w-full h-full items-center justify-center">
-            <MaterialCommunityIcons
-              name="map-marker-path"
-              size={72}
-              color="#FC5200"
-              opacity={0.8}
+        <MapErrorBoundary>
+          <Suspense fallback={null}>
+            <ActivityMap
+              encodedPolyline={activity.encodedPolyline}
+              isStatic={true}
+              isChangeable={false}
             />
-          </View>
-        </View>
+          </Suspense>
+        </MapErrorBoundary>
       )}
 
       {/* Action Row: Give Kudos, Comment, Share */}
@@ -117,8 +143,8 @@ export default function ActivtyCard({ activity }: ActivityCardProps) {
             size={18}
             color={"#94A3B8"}
           />
-          <Text 
-            className={"text-xs font-bold ml-2 text-gray-400"}>Kudos</Text> 
+          <Text
+            className={"text-xs font-bold ml-2 text-gray-400"}>Kudos</Text>
         </TouchableOpacity>
 
         <TouchableOpacity className="flex-row items-center py-1 px-4 rounded-md">

@@ -1,9 +1,9 @@
-export type TileProviderType = {
-  name: {
-    name: string,
-    url: string,
-    attribution: string,
-  }
+// Shared between apps/web and apps/mobile — no platform-specific code here.
+
+export type TileProviderEntry = {
+  name: string
+  url: string
+  attribution: string
 }
 
 export const TileProvider = {
@@ -47,4 +47,4 @@ export const TileProvider = {
     url: 'https://server.arcgisonline.com/ArcGIS/rest/services/Canvas/World_Light_Gray_Base/MapServer/tile/{z}/{y}/{x}',
     attribution: 'Tiles &copy; Esri &mdash; Esri, DeLorme, NAVTEQ',
   },
-} 
+} satisfies Record<string, TileProviderEntry>
