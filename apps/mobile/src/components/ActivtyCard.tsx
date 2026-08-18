@@ -2,35 +2,7 @@ import { View, Text, TouchableOpacity, Image } from "react-native"
 import { Ionicons, MaterialCommunityIcons, Feather } from "@expo/vector-icons"
 import type { ActivityCardType } from "@repo/types"
 import { toDateAndTime } from "@repo/units"
-import React, { Component, lazy, Suspense } from "react"
-
-// Lazy-import ActivityMap so MapLibre's native TurboModule registration
-// (MLRNCameraModule) only happens when the component actually tries to render,
-// NOT at module-evaluation time. This prevents the crash from cascading up to
-// dashboard.tsx and making it appear to have no default export.
-const ActivityMap = lazy(() => import("./ActivityMap"))
-
-// Error boundary — contains any native-module crash inside the map area only.
-// The rest of the card (and the entire feed) keeps rendering normally.
-interface MapBoundaryState { hasError: boolean }
-class MapErrorBoundary extends Component<
-  { children: React.ReactNode },
-  MapBoundaryState
-> {
-  state: MapBoundaryState = { hasError: false }
-
-  static getDerivedStateFromError(): MapBoundaryState {
-    return { hasError: true }
-  }
-
-  render() {
-    if (this.state.hasError) {
-      // Silent fallback — no map shown, card still fully functional
-      return null
-    }
-    return this.props.children
-  }
-}
+import ActivityMap from "./ActivityMap"
 
 interface ActivityCardProps {
   activity: ActivityCardType
@@ -120,18 +92,14 @@ export default function ActivtyCard({ activity }: ActivityCardProps) {
         </View>
       </View>
 
-      {/* Real Map — lazy + error-bounded so native crashes don't take down the feed */}
-      {activity.encodedPolyline && (
-        <MapErrorBoundary>
-          <Suspense fallback={null}>
-            <ActivityMap
-              encodedPolyline={activity.encodedPolyline}
-              isStatic={true}
-              isChangeable={false}
-            />
-          </Suspense>
-        </MapErrorBoundary>
-      )}
+      {/* Real Map — rendered if activity has encodedPolyline */}
+      {activity.encodedPolyline ? (
+        <ActivityMap
+          encodedPolyline={activity.encodedPolyline}
+          isStatic={true}
+          isChangeable={false}
+        />
+      ) : null}
 
       {/* Action Row: Give Kudos, Comment, Share */}
       <View className="flex-row justify-around py-2.5 px-2">

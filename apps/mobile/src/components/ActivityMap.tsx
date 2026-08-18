@@ -1,8 +1,16 @@
-import { View } from "react-native"
-import { Map, Camera, GeoJSONSource, Layer } from "@maplibre/maplibre-react-native"
-import type { LngLatBounds } from "@maplibre/maplibre-react-native"
+import React, { useMemo } from "react"
+import { View, Text, StyleSheet } from "react-native"
+import { MaterialCommunityIcons } from "@expo/vector-icons"
 import { decodePolyline } from "@repo/gpx"
 import { TileProvider } from "../../../shared/TileProvider"
+
+let MapLibreModule: typeof import("@maplibre/maplibre-react-native") | null = null
+
+try {
+  MapLibreModule = require("@maplibre/maplibre-react-native")
+} catch (err) {
+  MapLibreModule = null
+}
 
 type ActivityMapProps = {
   encodedPolyline?: string
@@ -16,90 +24,127 @@ export default function ActivityMap({
   isChangeable,
 }: ActivityMapProps) {
   // Decode polyline → [{lat, lng}] — same as web MapClient
-  const points = encodedPolyline ? decodePolyline(encodedPolyline) : []
+  const points = useMemo(
+    () => (encodedPolyline ? decodePolyline(encodedPolyline) : []),
+    [encodedPolyline]
+  )
 
   // GeoJSON for the route line — MapLibre needs [lng, lat] order
-  const routeGeoJSON: GeoJSON.Feature<GeoJSON.LineString> | null =
-    points.length >= 2
-      ? {
-          type: "Feature",
-          geometry: {
-            type: "LineString",
-            coordinates: points.map((p) => [p.lng, p.lat]),
-          },
-          properties: {},
-        }
-      : null
+  const routeGeoJSON: GeoJSON.Feature<GeoJSON.LineString> | null = useMemo(
+    () =>
+      points.length >= 2
+        ? {
+            type: "Feature",
+            geometry: {
+              type: "LineString",
+              coordinates: points.map((p) => [p.lng, p.lat]),
+            },
+            properties: {},
+          }
+        : null,
+    [points]
+  )
 
-  // Fit camera to route bounds — mirrors web FitBounds component
-  // LngLatBounds = [west, south, east, north]
-  const cameraBounds: LngLatBounds | null = routeGeoJSON
-    ? [
-        Math.min(...points.map((p) => p.lng)),
-        Math.min(...points.map((p) => p.lat)),
-        Math.max(...points.map((p) => p.lng)),
-        Math.max(...points.map((p) => p.lat)),
-      ]
-    : null
+  // Fit camera to route bounds — LngLatBounds = [west, south, east, north]
+  const cameraBounds = useMemo(() => {
+    if (!routeGeoJSON || points.length < 2) return null
+    return [
+      Math.min(...points.map((p) => p.lng)),
+      Math.min(...points.map((p) => p.lat)),
+      Math.max(...points.map((p) => p.lng)),
+      Math.max(...points.map((p) => p.lat)),
+    ] as import("@maplibre/maplibre-react-native").LngLatBounds
+  }, [routeGeoJSON, points])
 
   // Default center when no route — mirrors web [51.505, -0.09]
   const defaultCenter: [number, number] = [-0.09, 51.505]
 
-  // Tile URL — cartoVoyager matches the web default (checked layer in TileLayers.tsx)
-  // Replace {s} (subdomain) with a fixed letter and strip {r} (retina suffix).
-  const tileUrl = TileProvider.cartoVoyager.url
-    .replace("{s}", "a")
-    .replace("{r}", "")
+  // Tile URL — cartoVoyager matches web default
+  const tileUrl = useMemo(
+    () => TileProvider.cartoVoyager.url.replace("{s}", "a").replace("{r}", ""),
+    []
+  )
 
-  // Inline MapLibre style — raster tile source over an empty base
-  const mapStyle = {
-    version: 8 as const,
-    sources: {
-      tiles: {
-        type: "raster" as const,
-        tiles: [tileUrl],
-        tileSize: 256,
+  // MapLibre raster style spec
+  const mapStyle = useMemo(
+    () => ({
+      version: 8 as const,
+      sources: {
+        "carto-tiles": {
+          type: "raster" as const,
+          tiles: [tileUrl],
+          tileSize: 256,
+        },
       },
-    },
-    layers: [
-      {
-        id: "background-tiles",
-        type: "raster" as const,
-        source: "tiles",
-      },
-    ],
+      layers: [
+        {
+          id: "carto-layer",
+          type: "raster" as const,
+          source: "carto-tiles",
+          minzoom: 0,
+          maxzoom: 22,
+        },
+      ],
+    }),
+    [tileUrl]
+  )
+
+  // If MapLibre native module is missing (e.g. running in standard Expo Go),
+  // render a styled map placeholder with fixed dimensions so the layout is preserved.
+  if (!MapLibreModule || !MapLibreModule.Map) {
+    return (
+      <View style={styles.container} className="bg-slate-950 my-1 justify-center items-center relative overflow-hidden">
+        <View className="absolute inset-0 opacity-20 bg-slate-800" />
+        <View className="items-center justify-center">
+          <MaterialCommunityIcons
+            name="map-marker-path"
+            size={48}
+            color="#FC5200"
+            opacity={0.8}
+          />
+          <Text className="text-slate-400 text-xs font-semibold mt-1">
+            Map Route ({points.length} points)
+          </Text>
+          <Text className="text-slate-500 text-[10px] mt-0.5">
+            Native MapLibre requires Dev Build (`npx expo run:android`)
+          </Text>
+        </View>
+      </View>
+    )
   }
 
+  const { Map, Camera, GeoJSONSource, Layer } = MapLibreModule
+
   return (
-    <View className="w-full h-44 overflow-hidden">
+    <View style={styles.container} className="bg-slate-950 my-1 overflow-hidden">
       <Map
-        className="flex-1"
+        style={styles.map}
         mapStyle={mapStyle}
         dragPan={!isStatic}
-        // pitchEnabled={false}
+        touchPitch={false}
         attribution={false}
         logo={false}
         compass={false}
       >
-        {/* <Camera
-          animationMode="none"
+        <Camera
+          duration={0}
           {...(cameraBounds
             ? {
                 bounds: cameraBounds,
-                padding: { paddingTop: 20, paddingBottom: 20, paddingLeft: 20, paddingRight: 20 },
+                padding: { top: 24, bottom: 24, left: 24, right: 24 },
               }
-            : { centerCoordinate: defaultCenter, zoomLevel: 13 })}
-        /> */}
+            : { center: defaultCenter, zoom: 13 })}
+        />
 
-        {/* Route polyline — only rendered when encodedPolyline is provided */}
+        {/* Route polyline layer */}
         {routeGeoJSON && (
           <GeoJSONSource id="route" data={routeGeoJSON}>
             <Layer
               id="routeLine"
               type="line"
               paint={{
-                "line-color": "#FC4C02",  // same hex as web Polyline pathOptions
-                "line-width": 3,
+                "line-color": "#FC4C02", // Strava orange
+                "line-width": 4,
                 "line-opacity": 0.9,
               }}
               layout={{
@@ -113,3 +158,15 @@ export default function ActivityMap({
     </View>
   )
 }
+
+const styles = StyleSheet.create({
+  container: {
+    width: "100%",
+    height: 176, // Fixed height for tests & rendering
+  },
+  map: {
+    width: "100%",
+    height: 176,
+    flex: 1,
+  },
+})
