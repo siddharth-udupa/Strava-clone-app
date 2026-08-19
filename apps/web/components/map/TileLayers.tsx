@@ -1,62 +1,62 @@
 import { LayersControl, TileLayer } from "react-leaflet";
-import { TileProvider } from "../../../shared/TileProvider";
-
+import { tileProviders, DEFAULT_TILE_PROVIDER } from "@repo/maps";
 
 export function TileLayers({ isChangeable }: { isChangeable: boolean }) {
+  const defaultProvider = tileProviders[DEFAULT_TILE_PROVIDER];
+
   return (
     <>
-      {isChangeable ?
+      {isChangeable ? (
         <LayersControl position="topright">
-          {/* OpenStreetMap (Standard) */}
-
           {/* CartoDB Voyager */}
-          <LayersControl.BaseLayer checked name={TileProvider.cartoVoyager.name}>
+          <LayersControl.BaseLayer checked name={tileProviders.cartoVoyager.name}>
             <TileLayer
-              url={TileProvider.cartoVoyager.url}
-            // attribution={TileProvider.cartoVoyager.attribution}
+              url={tileProviders.cartoVoyager.url}
+              attribution={tileProviders.cartoVoyager.attribution}
             />
           </LayersControl.BaseLayer>
           {/* CartoDB Positron */}
-          <LayersControl.BaseLayer name={TileProvider.cartoPositron.name}>
+          <LayersControl.BaseLayer name={tileProviders.cartoPositron.name}>
             <TileLayer
-              url={TileProvider.cartoPositron.url}
-            // attribution={TileProvider.cartoPositron.attribution}
+              url={tileProviders.cartoPositron.url}
+              attribution={tileProviders.cartoPositron.attribution}
             />
           </LayersControl.BaseLayer>
           {/* CartoDB Dark Matter */}
-          <LayersControl.BaseLayer name={TileProvider.cartoDark.name}>
+          <LayersControl.BaseLayer name={tileProviders.cartoDark.name}>
             <TileLayer
-              url={TileProvider.cartoDark.url}
-            // attribution={TileProvider.cartoDark.attribution}
+              url={tileProviders.cartoDark.url}
+              attribution={tileProviders.cartoDark.attribution}
             />
           </LayersControl.BaseLayer>
-          {/* CyclOSM */}
-
           {/* OpenTopoMap */}
-          <LayersControl.BaseLayer name={TileProvider.opentopo.name}>
+          <LayersControl.BaseLayer name={tileProviders.opentopo.name}>
             <TileLayer
-              url={TileProvider.opentopo.url}
-            // attribution={TileProvider.opentopo.attribution}
+              url={tileProviders.opentopo.url}
+              attribution={tileProviders.opentopo.attribution}
             />
           </LayersControl.BaseLayer>
           {/* Esri Satellite */}
-          <LayersControl.BaseLayer name={TileProvider.esriSatellite.name}>
+          <LayersControl.BaseLayer name={tileProviders.esriSatellite.name}>
             <TileLayer
-              url={TileProvider.esriSatellite.url}
-            // attribution={TileProvider.esriSatellite.attribution}
+              url={tileProviders.esriSatellite.url}
+              attribution={tileProviders.esriSatellite.attribution}
             />
           </LayersControl.BaseLayer>
           {/* Esri Gray */}
-          <LayersControl.BaseLayer name={TileProvider.esriGray.name}>
+          <LayersControl.BaseLayer name={tileProviders.esriGray.name}>
             <TileLayer
-              url={TileProvider.esriGray.url}
-            // attribution={TileProvider.esriGray.attribution}
+              url={tileProviders.esriGray.url}
+              attribution={tileProviders.esriGray.attribution}
             />
           </LayersControl.BaseLayer>
         </LayersControl>
-        :
-        <TileLayer url={TileProvider.openstreetmap.url} />
-      }
+      ) : (
+        <TileLayer
+          url={defaultProvider.url}
+          attribution={defaultProvider.attribution}
+        />
+      )}
     </>
-  )
+  );
 }

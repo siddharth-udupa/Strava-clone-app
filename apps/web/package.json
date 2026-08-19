@@ -12,6 +12,7 @@
     "@better-auth/expo": "^1.6.26",
     "@repo/db": "workspace:*",
     "@repo/gpx": "workspace:*",
+    "@repo/maps": "workspace:*",
     "@repo/units": "workspace:*",
     "@repo/validation": "workspace:*",
     "better-auth": "^1.6.21",

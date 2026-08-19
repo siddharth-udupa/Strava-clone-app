@@ -1,8 +1,8 @@
-import React, { useMemo } from "react"
+import { useMemo } from "react"
 import { View, Text, StyleSheet } from "react-native"
 import { MaterialCommunityIcons } from "@expo/vector-icons"
 import { decodePolyline } from "@repo/gpx"
-import { TileProvider } from "../../../shared/TileProvider"
+import { getMapLibreStyle, DEFAULT_TILE_PROVIDER, type TileProviderId } from "@repo/maps"
 
 let MapLibreModule: typeof import("@maplibre/maplibre-react-native") | null = null
 
@@ -15,32 +15,32 @@ try {
 type ActivityMapProps = {
   encodedPolyline?: string
   isStatic?: boolean
-  isChangeable: boolean
+  isChangeable?: boolean
+  providerId?: TileProviderId
 }
 
 export default function ActivityMap({
   encodedPolyline,
   isStatic = false,
   isChangeable,
+  providerId = DEFAULT_TILE_PROVIDER,
 }: ActivityMapProps) {
-  // Decode polyline → [{lat, lng}] — same as web MapClient
-  const points = useMemo(
-    () => (encodedPolyline ? decodePolyline(encodedPolyline) : []),
-    [encodedPolyline]
-  )
+  
+  const points = useMemo(() => (
+    encodedPolyline ? decodePolyline(encodedPolyline) : []), [encodedPolyline])
 
   // GeoJSON for the route line — MapLibre needs [lng, lat] order
   const routeGeoJSON: GeoJSON.Feature<GeoJSON.LineString> | null = useMemo(
     () =>
       points.length >= 2
         ? {
-            type: "Feature",
-            geometry: {
-              type: "LineString",
-              coordinates: points.map((p) => [p.lng, p.lat]),
-            },
-            properties: {},
-          }
+          type: "Feature",
+          geometry: {
+            type: "LineString",
+            coordinates: points.map((p) => [p.lng, p.lat]),
+          },
+          properties: {},
+        }
         : null,
     [points]
   )
@@ -59,34 +59,10 @@ export default function ActivityMap({
   // Default center when no route — mirrors web [51.505, -0.09]
   const defaultCenter: [number, number] = [-0.09, 51.505]
 
-  // Tile URL — cartoVoyager matches web default
-  const tileUrl = useMemo(
-    () => TileProvider.cartoVoyager.url.replace("{s}", "a").replace("{r}", ""),
-    []
-  )
-
-  // MapLibre raster style spec
+  // MapLibre raster style spec via mobile adapter
   const mapStyle = useMemo(
-    () => ({
-      version: 8 as const,
-      sources: {
-        "carto-tiles": {
-          type: "raster" as const,
-          tiles: [tileUrl],
-          tileSize: 256,
-        },
-      },
-      layers: [
-        {
-          id: "carto-layer",
-          type: "raster" as const,
-          source: "carto-tiles",
-          minzoom: 0,
-          maxzoom: 22,
-        },
-      ],
-    }),
-    [tileUrl]
+    () => getMapLibreStyle(providerId),
+    [providerId]
   )
 
   // If MapLibre native module is missing (e.g. running in standard Expo Go),
@@ -130,9 +106,9 @@ export default function ActivityMap({
           duration={0}
           {...(cameraBounds
             ? {
-                bounds: cameraBounds,
-                padding: { top: 24, bottom: 24, left: 24, right: 24 },
-              }
+              bounds: cameraBounds,
+              padding: { top: 24, bottom: 24, left: 24, right: 24 },
+            }
             : { center: defaultCenter, zoom: 13 })}
         />
 
@@ -162,11 +138,11 @@ export default function ActivityMap({
 const styles = StyleSheet.create({
   container: {
     width: "100%",
-    height: 176, // Fixed height for tests & rendering
+    height: 200, // Fixed height for tests & rendering
   },
   map: {
     width: "100%",
-    height: 176,
+    height: 200,
     flex: 1,
   },
 })

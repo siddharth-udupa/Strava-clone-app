@@ -235,6 +235,9 @@ importers:
       '@repo/gpx':
         specifier: workspace:*
         version: link:../../packages/gpx
+      '@repo/maps':
+        specifier: workspace:*
+        version: link:../../packages/maps
       '@repo/units':
         specifier: workspace:*
         version: link:../../packages/units
@@ -356,6 +359,9 @@ importers:
       '@repo/gpx':
         specifier: workspace:*
         version: link:../../packages/gpx
+      '@repo/maps':
+        specifier: workspace:*
+        version: link:../../packages/maps
       '@repo/units':
         specifier: workspace:*
         version: link:../../packages/units
@@ -445,6 +451,12 @@ importers:
       fast-xml-parser:
         specifier: ^5.9.3
         version: 5.9.3
+
+  packages/maps:
+    dependencies:
+      '@repo/types':
+        specifier: workspace:*
+        version: link:../types
 
   packages/types: {}
 

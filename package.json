@@ -4,7 +4,8 @@
   "description": "",
   "main": "index.js",
   "scripts": {
-    "dev": "pnpm --filter web dev",
+    "dev": "pnpm --parallel --filter web --filter mobile dev",
+    "web": "pnpm --filter web dev",
     "app": "pnpm --filter mobile start",
     "app:android": "pnpm --filter mobile android",
     "lint": "pnpm --filter web lint",
