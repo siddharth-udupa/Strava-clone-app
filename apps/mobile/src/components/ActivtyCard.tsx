@@ -1,7 +1,7 @@
 import { View, Text, TouchableOpacity, Image } from "react-native"
 import { Ionicons, MaterialCommunityIcons, Feather } from "@expo/vector-icons"
 import type { ActivityCardType } from "@repo/types"
-import ActivityMap from "./Map"
+import ActivityMap from "./map/Map"
 
 interface ActivityCardProps {
   activity: ActivityCardType
