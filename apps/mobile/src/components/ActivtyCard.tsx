@@ -96,7 +96,6 @@ export default function ActivtyCard({ activity }: ActivityCardProps) {
         <ActivityMap
           encodedPolyline={activity.encodedPolyline}
           isStatic={true}
-          isChangeable={false}
         />
       ) : null}
 

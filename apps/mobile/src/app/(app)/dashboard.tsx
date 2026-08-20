@@ -7,8 +7,8 @@ import { Ionicons } from "@expo/vector-icons"
 import ActivityFeed from "@/components/ActivityFeed"
 import { useActivities } from "@/hooks/useActivities"
 
-// Lazy-loaded Map component
-const LazyMap = lazy(() => import("@/components/map/Map"))
+// Lazy-load MapScreen component
+const LazyMapScreen = lazy(() => import("@/components/MapScreen"))
 
 type ActiveTabType = "home" | "maps" | "record" | "groups" | "you"
 
@@ -47,22 +47,16 @@ export default function DashboardScreen() {
       )}
 
       {activeTab === "maps" && (
-        <View className="flex-1" style={{ paddingBottom: Math.max(insets.bottom, 25) + 55 }}>
-          <Suspense
-            fallback={
-              <View className="flex-1 justify-center items-center bg-slate-950">
-                <ActivityIndicator size="large" color="#FC5200" />
-                <Text className="text-slate-400 text-xs mt-2 font-semibold">Loading Map Component...</Text>
-              </View>
-            }
-          >
-            <LazyMap
-              isStatic={false}
-              isChangeable={true}
-              style={{ width: "100%", height: "100%", flex: 1 }}
-            />
-          </Suspense>
-        </View>
+        <Suspense
+          fallback={
+            <View className="flex-1 justify-center items-center bg-slate-950">
+              <ActivityIndicator size="large" color="#FC5200" />
+              <Text className="text-slate-400 text-xs mt-2 font-semibold">Loading Map Screen...</Text>
+            </View>
+          }
+        >
+          <LazyMapScreen insets={insets} />
+        </Suspense>
       )}
 
       {activeTab !== "home" && activeTab !== "maps" && (
@@ -79,7 +73,7 @@ export default function DashboardScreen() {
   )
 }
 
-function TopBar({ insets, handleSignOut }: { insets: EdgeInsets, handleSignOut: () => Promise<void> }) {
+function TopBar({ insets, handleSignOut}: { insets: EdgeInsets, handleSignOut: () => Promise<void>}) {
   return (
     <View
       style={{ paddingTop: Math.max(insets.top, 35) }}
