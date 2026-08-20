@@ -1,8 +1,7 @@
 import { View, Text, TouchableOpacity, Image } from "react-native"
 import { Ionicons, MaterialCommunityIcons, Feather } from "@expo/vector-icons"
 import type { ActivityCardType } from "@repo/types"
-import { toDateAndTime } from "@repo/units"
-import ActivityMap from "./ActivityMap"
+import ActivityMap from "./Map"
 
 interface ActivityCardProps {
   activity: ActivityCardType

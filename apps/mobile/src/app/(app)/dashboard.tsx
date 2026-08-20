@@ -2,7 +2,7 @@ import React, { useState } from "react"
 import { View, Text, TouchableOpacity, StatusBar } from "react-native"
 import { type EdgeInsets, useSafeAreaInsets } from "react-native-safe-area-context"
 import { useSession, signOut } from "@/lib/auth-client"
-import { Redirect } from "expo-router"
+import { Redirect, useRouter } from "expo-router"
 import { Ionicons } from "@expo/vector-icons"
 import ActivityFeed from "@/components/ActivityFeed"
 import { useActivities } from "@/hooks/useActivities"
@@ -14,11 +14,11 @@ export default function DashboardScreen() {
   const { data: session } = useSession()
   const insets = useSafeAreaInsets()
   const [activeTab, setActiveTab] = useState<ActiveTabType>("home")
-  
+
   if (!session) {
     return <Redirect href={"/(auth)/sign-in" as any} />
   }
-  
+
   const { activities, isLoading, refreshing, error, refetch } = useActivities(session?.user.id)
 
   const handleSignOut = async () => {
@@ -30,24 +30,7 @@ export default function DashboardScreen() {
       <StatusBar barStyle="light-content" backgroundColor="#0F172A" />
 
       {/* TOP NAV BAR - Safe Area Inset Top */}
-      <View
-        style={{ paddingTop: Math.max(insets.top, 35) }}
-        className="bg-slate-900 border-b border-slate-800 px-4 pb-3"
-      >
-        <View className="flex-row items-center justify-between">
-          <Text className="text-[#FC5200] text-2xl font-black tracking-wider">
-            STRAVA - CLONE
-          </Text>
-          <View className="flex-row items-center space-x-3">
-            <TouchableOpacity
-              onPress={handleSignOut}
-              className="p-2 rounded-full bg-red-500/20 border border-red-500/40"
-            >
-              <Ionicons name="log-out-outline" size={18} color="#EF4444" />
-            </TouchableOpacity>
-          </View>
-        </View>
-      </View>
+      <TopBar insets={insets} handleSignOut={handleSignOut} />
 
 
       {/* SEPARATED ACTIVITY FEED COMPONENT */}
@@ -65,9 +48,33 @@ export default function DashboardScreen() {
   )
 }
 
-function BottomBar(
-  { insets, activeTab, setActiveTab }:
-    { insets: EdgeInsets, activeTab: ActiveTabType, setActiveTab: React.Dispatch<React.SetStateAction<ActiveTabType>> }) {
+function TopBar({ insets, handleSignOut}: { insets: EdgeInsets, handleSignOut: () => Promise<void>}) {
+  return (
+    <View
+      style={{ paddingTop: Math.max(insets.top, 35) }}
+      className="bg-slate-900 border-b border-slate-800 px-4 pb-3"
+    >
+      <View className="flex-row items-center justify-between">
+        <Text className="text-[#FC5200] text-2xl font-black tracking-wider">
+          STRAVA - CLONE
+        </Text>
+        <View className="flex-row items-center space-x-3">
+          <TouchableOpacity
+            onPress={handleSignOut}
+            className="p-2 rounded-full bg-red-500/20 border border-red-500/40"
+          >
+            <Ionicons name="log-out-outline" size={18} color="#EF4444" />
+          </TouchableOpacity>
+        </View>
+      </View>
+    </View>
+  )
+}
+
+function BottomBar({ insets, activeTab, setActiveTab }:
+  { insets: EdgeInsets, activeTab: ActiveTabType, setActiveTab: React.Dispatch<React.SetStateAction<ActiveTabType>> }) {
+  const router = useRouter()
+
   return (
     <View
       style={{ paddingBottom: Math.max(insets.bottom, 25) }}
@@ -88,7 +95,10 @@ function BottomBar(
       </TouchableOpacity>
 
       <TouchableOpacity
-        onPress={() => setActiveTab("maps")}
+        onPress={() => {
+          setActiveTab("maps")
+          router.push("/(app)/map" as any)
+        }}
         className="items-center justify-center flex-1 py-1"
       >
         <Ionicons

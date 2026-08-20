@@ -1,5 +1,5 @@
 import { useMemo } from "react"
-import { View, Text, StyleSheet } from "react-native"
+import { View, Text, StyleSheet, StyleProp, ViewStyle } from "react-native"
 import { MaterialCommunityIcons } from "@expo/vector-icons"
 import { decodePolyline } from "@repo/gpx"
 import { getMapLibreStyle, DEFAULT_TILE_PROVIDER, type TileProviderId } from "@repo/maps"
@@ -17,6 +17,7 @@ type ActivityMapProps = {
   isStatic?: boolean
   isChangeable?: boolean
   providerId?: TileProviderId
+  style?: StyleProp<ViewStyle>
 }
 
 export default function ActivityMap({
@@ -24,6 +25,7 @@ export default function ActivityMap({
   isStatic = false,
   isChangeable,
   providerId = DEFAULT_TILE_PROVIDER,
+  style,
 }: ActivityMapProps) {
   
   const points = useMemo(() => (
@@ -65,11 +67,14 @@ export default function ActivityMap({
     [providerId]
   )
 
+  const containerStyles = [styles.container, style]
+  const mapStyles = style ? [styles.map, style] : styles.map
+
   // If MapLibre native module is missing (e.g. running in standard Expo Go),
   // render a styled map placeholder with fixed dimensions so the layout is preserved.
   if (!MapLibreModule || !MapLibreModule.Map) {
     return (
-      <View style={styles.container} className="bg-slate-950 my-1 justify-center items-center relative overflow-hidden">
+      <View style={containerStyles} className="bg-slate-950 my-1 justify-center items-center relative overflow-hidden">
         <View className="absolute inset-0 opacity-20 bg-slate-800" />
         <View className="items-center justify-center">
           <MaterialCommunityIcons
@@ -92,9 +97,9 @@ export default function ActivityMap({
   const { Map, Camera, GeoJSONSource, Layer } = MapLibreModule
 
   return (
-    <View style={styles.container} className="bg-slate-950 my-1 overflow-hidden">
+    <View style={containerStyles} className="bg-slate-950 my-1 overflow-hidden">
       <Map
-        style={styles.map}
+        style={mapStyles}
         mapStyle={mapStyle}
         dragPan={!isStatic}
         touchPitch={false}
