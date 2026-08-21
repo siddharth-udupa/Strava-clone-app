@@ -1,3 +1,5 @@
+import type { getActivityDetails } from "@repo/db"
+
 export type ActivityCardType = {
     userName: string,
     activityId: string,
@@ -25,3 +27,5 @@ export type ActivityStreams = {
     speed: number[],       // speed in m/s at each point (rolling window smoothed)
     heartrate?: number[],  // BPM if GPX has Garmin HR extension
 }
+
+export type ActivityDetailsType = NonNullable<Awaited<ReturnType<typeof getActivityDetails>>>;

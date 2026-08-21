@@ -59,6 +59,8 @@ export async function getActivityDetails(activityId: string) {
   return activity
 }
 
+export type ActivityDetailsType = NonNullable<Awaited<ReturnType<typeof getActivityDetails>>>
+
 export async function CreateActivity(data: CreateActivityInput) {
   const res = await db
     .insert(activities)

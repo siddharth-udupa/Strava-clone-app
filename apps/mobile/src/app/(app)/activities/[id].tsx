@@ -1,13 +1,14 @@
 import { useState, useEffect, useRef } from "react"
 import { View, Text, TouchableOpacity, ScrollView, Image, Animated, PanResponder, Dimensions, ActivityIndicator, StatusBar } from "react-native"
 import { useSafeAreaInsets } from "react-native-safe-area-context"
-import { useLocalSearchParams, useRouter } from "expo-router"
+import { Redirect, useLocalSearchParams, useRouter } from "expo-router"
 import { Ionicons, MaterialCommunityIcons, Feather } from "@expo/vector-icons"
 import Map from "@/components/map/Map"
 import TileProviderPicker from "@/components/map/TileProviderPicker"
 import { DEFAULT_TILE_PROVIDER, type TileProviderId } from "@repo/maps"
 import { metersToDistance, metersToElevation, formatDurationShort, computePace } from "@repo/units"
-import type { ActivityCardType, ActivityStreams } from "@repo/types"
+import type { ActivityDetailsType } from "@repo/types"
+import { authClient, useSession } from "@/lib/auth-client"
 
 const { height: SCREEN_HEIGHT } = Dimensions.get("window")
 const MIN_SHEET_HEIGHT = SCREEN_HEIGHT * 0.20
@@ -18,35 +19,16 @@ const API_URL = process.env.EXPO_PUBLIC_API_URL ?? "http://192.168.31.240:3000"
 
 type TabType = "overview" | "analysis" | "segments" | "best_efforts"
 
-// Blueprint fallback activity for offline preview / default demonstration
-const BLUEPRINT_ACTIVITY: ActivityCardType & {
-  streams?: ActivityStreams[]
-  user?: { name: string; avatarUrl?: string; preferences?: any }
-} = {
-  activityId: "blueprint-123",
-  userId: "user-1",
-  userName: "Siddharth Udupa",
-  type: "Run",
-  title: "Morning Trail & Coastal Run",
-  description: "Felt strong throughout the hills! Beautiful sunny morning breeze with smooth pacing.",
-  distance: 10450, // 10.45 km
-  duration: 3240, // 54 mins
-  elevationGain: 185,
-  elevationLoss: 178,
-  createdAt: new Date(),
-  encodedPolyline: "hw8*pwf",
-}
-
 export default function ActivityDetailScreen() {
+  const { data: session } = useSession()
   const { id } = useLocalSearchParams<{ id: string }>()
   const router = useRouter()
   const insets = useSafeAreaInsets()
 
-  const [activity, setActivity] = useState<any>(BLUEPRINT_ACTIVITY)
+  const [data, setdata] = useState<ActivityDetailsType | null>(null)
   const [isLoading, setIsLoading] = useState<boolean>(true)
   const [activeTab, setActiveTab] = useState<TabType>("overview")
   const [currentProviderId, setCurrentProviderId] = useState<TileProviderId>(DEFAULT_TILE_PROVIDER)
-
 
   // Animated Bottom Sheet height state
   const sheetAnimHeight = useRef(new Animated.Value(MID_SHEET_HEIGHT)).current
@@ -81,30 +63,71 @@ export default function ActivityDetailScreen() {
 
   useEffect(() => {
     async function fetchActivityData() {
-      if (!id || id === "blueprint-123") {
+      if (!id) {
         setIsLoading(false)
         return
       }
       try {
-        const res = await fetch(`${API_URL}/api/activities/${id}`)
-        if (res.ok) {
-          const data = await res.json()
-          setActivity(data)
+        const res = await authClient.$fetch<{ data: ActivityDetailsType }>(
+          `${API_URL}/api/activities/${id}`
+        )
+        if (res?.data) {
+          setdata(res.data.data)
         }
       } catch (err) {
-        console.warn("Using blueprint fallback data for activity:", err)
+        console.error("Fetch error:", err);
+        setdata(null);
       } finally {
-        setIsLoading(false)
+        setIsLoading(false);
       }
     }
     fetchActivityData()
   }, [id])
 
-  const distanceFormatted = metersToDistance(activity.distance || 0, "metric")
-  const elevGainFormatted = metersToElevation(activity.elevationGain || 0, "meters")
-  const elevLossFormatted = metersToElevation(activity.elevationLoss || 0, "meters")
-  const durationFormatted = formatDurationShort(activity.duration || 0)
-  const paceFormatted = computePace(activity.duration || 0, activity.distance || 0, "min/km")
+  if (!session) {
+    return <Redirect href={"/(auth)/sign-in" as any} />
+  }
+
+  if (isLoading) {
+    return (
+      <View className="flex-1 bg-slate-950 items-center justify-center">
+        <StatusBar barStyle="light-content" />
+        <ActivityIndicator size="large" color="#FC5200" />
+      </View>
+    )
+  }
+
+  if (!data) {
+    return (
+      <View className="flex-1 bg-slate-950 items-center justify-center px-6">
+        <StatusBar barStyle="light-content" />
+
+        <View className="w-20 h-20 rounded-full bg-slate-900 border border-slate-800 items-center justify-center mb-4">
+          <Ionicons name="alert-circle-outline" size={40} color="#FC5200" />
+        </View>
+        <Text className="text-white text-xl font-bold tracking-tight">
+          Activity Not Found
+        </Text>
+
+        <Text className="text-slate-400 text-sm text-center mt-2 mb-6 leading-5">
+          This activity doesn't exist, may have been deleted, or is temporarily unavailable.
+        </Text>
+        <TouchableOpacity
+          onPress={() => router.back()}
+          className="bg-[#FC5200] px-6 py-3 rounded-xl flex-row items-center active:opacity-80"
+        >
+          <Ionicons name="arrow-back" size={18} color="#FFFFFF" />
+          <Text className="text-white font-bold text-sm ml-2">Go Back</Text>
+        </TouchableOpacity>
+      </View>
+    )
+  }
+
+  const distance = metersToDistance(data.distance, data.user?.preferences.distanceUnit)
+  const elevGain = metersToElevation(data.elevationGain, data.user?.preferences.elevationUnit)
+  const elevLoss = metersToElevation(data.elevationLoss, data.user?.preferences.elevationUnit)
+  const duration = formatDurationShort(data.duration)
+  const pace = computePace(data.duration, data.distance, data.user?.preferences.paceUnit)
 
   return (
     <View className="flex-1 bg-slate-950">
@@ -113,7 +136,7 @@ export default function ActivityDetailScreen() {
       {/* MAP LAYER (Interactive & Changeable Map) */}
       <View className="flex-1">
         <Map
-          encodedPolyline={activity.encodedPolyline || undefined}
+          encodedPolyline={data.encodedPolyline || undefined}
           isStatic={false}
           providerId={currentProviderId}
           style={{ width: "100%", height: "100%" }}
@@ -197,9 +220,9 @@ export default function ActivityDetailScreen() {
                   />
                 </View>
                 <View className="flex-1">
-                  <Text className="text-[#FC5200] font-bold text-base">{activity.userName}</Text>
+                  <Text className="text-[#FC5200] font-bold text-base">{data.user.name}</Text>
                   <Text className="text-slate-400 text-xs mt-0.5">
-                    {new Date(activity.createdAt).toLocaleDateString(undefined, {
+                    {new Date(data.createdAt).toLocaleDateString(undefined, {
                       weekday: "short",
                       month: "short",
                       day: "numeric",
@@ -212,20 +235,20 @@ export default function ActivityDetailScreen() {
               {/* Activity Type Badge */}
               <View className="bg-[#FC5200]/15 border border-[#FC5200]/40 px-3 py-1 rounded-full flex-row items-center">
                 <MaterialCommunityIcons
-                  name={activity.type === "Ride" ? "bike" : activity.type === "Hike" ? "hiking" : "run"}
+                  name={data.type === "Ride" ? "bike" : data.type === "Hike" ? "hiking" : "run"}
                   size={14}
                   color="#FC5200"
                 />
-                <Text className="text-[#FC5200] font-bold text-xs ml-1.5">{activity.type}</Text>
+                <Text className="text-[#FC5200] font-bold text-xs ml-1.5">{data.type}</Text>
               </View>
             </View>
 
             {/* Activity Title & Description */}
             <Text className="text-white text-2xl font-black tracking-tight mb-1">
-              {activity.title || "Untitled Activity"}
+              {data.title || "Untitled Activity"}
             </Text>
-            {activity.description ? (
-              <Text className="text-slate-300 text-sm mb-4 leading-5">{activity.description}</Text>
+            {data.description ? (
+              <Text className="text-slate-300 text-sm mb-4 leading-5">{data.description}</Text>
             ) : (
               <TouchableOpacity className="mb-4 self-start">
                 <Text className="text-slate-400 text-xs italic bg-slate-800/80 px-2.5 py-1 rounded border border-slate-700">
@@ -298,7 +321,7 @@ export default function ActivityDetailScreen() {
                       Distance
                     </Text>
                     <View className="flex-row items-baseline mt-1">
-                      <Text className="text-white text-2xl font-black">{distanceFormatted}</Text>
+                      <Text className="text-white text-2xl font-black">{distance}</Text>
                       <Text className="text-slate-400 text-xs ml-1 font-semibold">km</Text>
                     </View>
                   </View>
@@ -307,7 +330,7 @@ export default function ActivityDetailScreen() {
                     <Text className="text-slate-400 text-[11px] font-bold uppercase tracking-wider">
                       Moving Time
                     </Text>
-                    <Text className="text-white text-2xl font-black mt-1">{durationFormatted}</Text>
+                    <Text className="text-white text-2xl font-black mt-1">{duration}</Text>
                   </View>
 
                   <View className="items-start">
@@ -315,7 +338,7 @@ export default function ActivityDetailScreen() {
                       Pace
                     </Text>
                     <View className="flex-row items-baseline mt-1">
-                      <Text className="text-white text-2xl font-black">{paceFormatted}</Text>
+                      <Text className="text-white text-2xl font-black">{pace}</Text>
                       <Text className="text-slate-400 text-xs ml-1 font-semibold">/km</Text>
                     </View>
                   </View>
@@ -325,17 +348,17 @@ export default function ActivityDetailScreen() {
                 <View className="bg-slate-950 border border-slate-800/80 rounded-2xl p-4 space-y-3">
                   <View className="flex-row justify-between items-center pb-2.5 border-b border-slate-800/60">
                     <Text className="text-slate-400 text-xs font-semibold">Elevation Gain</Text>
-                    <Text className="text-white text-sm font-extrabold">{elevGainFormatted} m</Text>
+                    <Text className="text-white text-sm font-extrabold">{elevGain} m</Text>
                   </View>
 
                   <View className="flex-row justify-between items-center pb-2.5 border-b border-slate-800/60">
                     <Text className="text-slate-400 text-xs font-semibold">Elevation Loss</Text>
-                    <Text className="text-white text-sm font-extrabold">{elevLossFormatted} m</Text>
+                    <Text className="text-white text-sm font-extrabold">{elevLoss} m</Text>
                   </View>
 
                   <View className="flex-row justify-between items-center pb-2.5 border-b border-slate-800/60">
                     <Text className="text-slate-400 text-xs font-semibold">Elapsed Time</Text>
-                    <Text className="text-white text-sm font-extrabold">{durationFormatted}</Text>
+                    <Text className="text-white text-sm font-extrabold">{duration}</Text>
                   </View>
 
                   <View className="flex-row justify-between items-center">

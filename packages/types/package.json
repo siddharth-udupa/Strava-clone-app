@@ -2,6 +2,9 @@
   "name": "@repo/types",
   "main": "./src/index.ts",
   "types": "./src/index.ts",
+  "devDependencies": {
+    "@repo/db": "workspace: *"
+  },
   "exports": {
     ".": "./src/index.ts"
   }
