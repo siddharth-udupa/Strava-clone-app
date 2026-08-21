@@ -1,16 +1,18 @@
 import React, { useState } from "react"
-import { View, Text, TouchableOpacity, Modal, ScrollView } from "react-native"
+import { View, Text, TouchableOpacity, Modal, ScrollView, StyleProp, ViewStyle } from "react-native"
 import { Ionicons } from "@expo/vector-icons"
 import { tileProviders, DEFAULT_TILE_PROVIDER, type TileProviderId } from "@repo/maps"
 
 export type TileProviderPickerProps = {
   currentProviderId: TileProviderId
   onSelectProvider: (providerId: TileProviderId) => void
+  triggerStyle?: StyleProp<ViewStyle>
 }
 
 export default function TileProviderPicker({
   currentProviderId,
   onSelectProvider,
+  triggerStyle,
 }: TileProviderPickerProps) {
   const [isPickerOpen, setIsPickerOpen] = useState(false)
   const activeProvider = tileProviders[currentProviderId] || tileProviders[DEFAULT_TILE_PROVIDER]
@@ -20,6 +22,7 @@ export default function TileProviderPicker({
       {/* Floating Trigger Button */}
       <TouchableOpacity
         onPress={() => setIsPickerOpen(true)}
+        style={triggerStyle}
         className="absolute top-3 right-3 z-10 bg-slate-900/90 border border-slate-700/80 px-3 py-1.5 rounded-full shadow-lg flex-row items-center active:opacity-80"
       >
         <Ionicons name="layers" size={16} color="#FC5200" />

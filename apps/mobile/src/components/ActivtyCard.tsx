@@ -1,5 +1,6 @@
 import { View, Text, TouchableOpacity, Image } from "react-native"
 import { Ionicons, MaterialCommunityIcons, Feather } from "@expo/vector-icons"
+import { useRouter } from "expo-router"
 import type { ActivityCardType } from "@repo/types"
 import ActivityMap from "./map/Map"
 
@@ -8,6 +9,7 @@ interface ActivityCardProps {
 }
 
 export default function ActivtyCard({ activity }: ActivityCardProps) {
+  const router = useRouter()
   let elev = { name: "", value: 0 }
   if (activity.elevationGain > activity.elevationLoss) {
     elev = { name: "Elev Gain", value: activity.elevationGain }
@@ -15,10 +17,16 @@ export default function ActivtyCard({ activity }: ActivityCardProps) {
     elev = { name: "Elev Loss", value: activity.elevationLoss }
   }
 
+  const handlePressCard = () => {
+    if (activity.activityId) {
+      router.push(`/activities/${activity.activityId}` as any)
+    }
+  }
+
   return (
     <View className="bg-slate-900 mb-3 border-y border-slate-800/80">
       {/* Card Header: Avatar + User Details */}
-      <View className="flex-row items-center justify-between p-4 pb-2">
+      <TouchableOpacity onPress={handlePressCard} activeOpacity={0.8} className="flex-row items-center justify-between p-4 pb-2">
         <View className="flex-row items-center flex-1">
           <Image
             source={{ uri: "../../../../web/public/temphoto.png" }}
@@ -49,17 +57,17 @@ export default function ActivtyCard({ activity }: ActivityCardProps) {
             </Text>
           </View>
         </View>
-      </View>
+      </TouchableOpacity>
 
       {/* Card Title & Optional Description */}
-      <View className="px-4 py-1">
+      <TouchableOpacity onPress={handlePressCard} activeOpacity={0.8} className="px-4 py-1">
         <Text className="text-white font-extrabold text-lg leading-6">
           {activity.title}
         </Text>
         {activity.description ? (
           <Text className="text-gray-300 text-sm mt-1">{activity.description}</Text>
         ) : null}
-      </View>
+      </TouchableOpacity>
 
       {/* Metrics Grid */}
       <View className="flex-row justify-between px-4 py-3 border-b border-slate-800/40">

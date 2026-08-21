@@ -17,6 +17,7 @@ export type MapProps = {
   isStatic?: boolean
   providerId?: TileProviderId
   style?: StyleProp<ViewStyle>
+  boundsPadding?: { top: number; bottom: number; left: number; right: number }
 }
 
 export default function Map({
@@ -24,6 +25,7 @@ export default function Map({
   isStatic = false,
   providerId = DEFAULT_TILE_PROVIDER,
   style,
+  boundsPadding,
 }: MapProps) {
   const points = useMemo(() => (
     encodedPolyline ? decodePolyline(encodedPolyline) : []), [encodedPolyline])
@@ -112,7 +114,7 @@ export default function Map({
           {...(cameraBounds
             ? {
               bounds: cameraBounds,
-              padding: { top: 24, bottom: 24, left: 24, right: 24 },
+              padding: boundsPadding || { top: 24, bottom: 24, left: 24, right: 24 },
             }
             : { center: defaultCenter, zoom: 13 })}
         />
