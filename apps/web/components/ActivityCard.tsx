@@ -25,7 +25,7 @@ export default function ActivityCard({ activities, userPreferences }: ActivityPr
     elev = { name: "Elev Loss", value: activities.elevationLoss }
   }
 
-  const { date: formattedDate, time: formattedTime } = formatDateAndTime(activities.createdAt, userPreferences?.timeFormat);
+  const { date: formattedDate, time: formattedTime } = formatDateAndTime(activities.createdAt, userPreferences?.timeFormat)
 
   const stats: { name: string, value: number | string, unit: string }[] = [{
     name: "Distance",

@@ -1,7 +1,9 @@
 import { FlatList, TouchableOpacity, View, Text, ActivityIndicator } from "react-native"
 import ActivtyCard from "./ActivtyCard"
 import { Ionicons } from "@expo/vector-icons"
-import type { ActivityCardType } from "@repo/types"
+import type { ActivityCardType, PreferencesType } from "@repo/types"
+import { useEffect, useState } from "react"
+import { authClient } from "@/lib/auth-client"
 
 interface ActivityFeedProps {
   activities: ActivityCardType[]
@@ -12,6 +14,8 @@ interface ActivityFeedProps {
   error?: string | null
 }
 
+const API_URL = process.env.EXPO_PUBLIC_API_URL ?? "http://192.168.31.240:3000"
+
 export default function ActivityFeed({
   activities,
   contentContainerStyle,
@@ -20,6 +24,38 @@ export default function ActivityFeed({
   isLoading = false,
   error = null,
 }: ActivityFeedProps) {
+
+
+  const [preferences, setPreference] = useState<PreferencesType>({
+    updatedAt: null,
+    userId: "",
+    theme: "light",
+    distanceUnit: "metric",
+    elevationUnit: "meters",
+    paceUnit: "min/km",
+    speedUnit: "km/h",
+    weightUnit: "kg",
+    timeFormat: "12h",
+  })
+
+  useEffect(() => {
+    async function fetchPrefernences() {
+      try {
+        const res = await authClient.$fetch<{ data: PreferencesType }>(
+          `${API_URL}/api/activities/`
+        )
+        if (res?.data) {
+          setPreference(res.data.data)
+        }
+      }
+      catch (err) {
+        console.error("Using default preferences due to fetch error:", err)
+      }
+    }
+    fetchPrefernences()
+  }, [])
+
+
   if (isLoading && activities.length === 0) {
     return (
       <View className="flex-1 justify-center items-center p-8">
@@ -34,7 +70,7 @@ export default function ActivityFeed({
       data={activities}
       keyExtractor={(item) => item.activityId}
       renderItem={({ item }) => (
-        <ActivtyCard activity={item} />
+        <ActivtyCard activity={item} preferences={preferences} />
       )}
       ListHeaderComponent={ListHeaderComponent}
       ListEmptyComponent={

@@ -1,21 +1,6 @@
-import type { getActivityDetails } from "@repo/db"
+import type { activitiesType, getActivityDetails } from "@repo/db"
 
-export type ActivityCardType = {
-    userName: string,
-    activityId: string,
-    userId: string | null,
-    type: string,
-    title: string | null,
-    description: string | null,
-    distance: number,
-    duration: number,
-    encodedPolyline: string | null,
-    elevationGain: number,
-    elevationLoss: number,
-    startTime?: Date | null,
-    endTime?: Date | null,
-    createdAt: Date,
-}
+export type ActivityCardType = activitiesType
 
 export type ActivityStreams = {
     // All arrays are the same length. Index i corresponds to the same moment in time.

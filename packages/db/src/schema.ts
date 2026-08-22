@@ -35,6 +35,8 @@ export const activities = pgTable("activities", {
   createdAt: timestamp("created_at").defaultNow().notNull()
 })
 
+export type activitiesType = typeof activities.$inferSelect
+
 // Store as JSON arrays — efficient for bulk reads, no joins needed
 export const activityStreams = pgTable("activity_streams", {
   id: uuid("id").defaultRandom().primaryKey(),

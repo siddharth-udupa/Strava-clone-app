@@ -1,14 +1,17 @@
 import { View, Text, TouchableOpacity, Image } from "react-native"
 import { Ionicons, MaterialCommunityIcons, Feather } from "@expo/vector-icons"
 import { useRouter } from "expo-router"
-import type { ActivityCardType } from "@repo/types"
+import type { ActivityCardType, PreferencesType } from "@repo/types"
 import ActivityMap from "./map/Map"
+import { formatDateAndTime, toDateAndTime } from "@repo/units"
 
 interface ActivityCardProps {
   activity: ActivityCardType
+  preferences: PreferencesType
 }
 
-export default function ActivtyCard({ activity }: ActivityCardProps) {
+
+export default function ActivtyCard({ activity, preferences }: ActivityCardProps) {
   const router = useRouter()
   let elev = { name: "", value: 0 }
   if (activity.elevationGain > activity.elevationLoss) {
@@ -16,6 +19,8 @@ export default function ActivtyCard({ activity }: ActivityCardProps) {
   } else {
     elev = { name: "Elev Loss", value: activity.elevationLoss }
   }
+
+  const formattedDate = toDateAndTime(activity.createdAt)
 
   const handlePressCard = () => {
     if (activity.activityId) {
@@ -35,7 +40,7 @@ export default function ActivtyCard({ activity }: ActivityCardProps) {
           <View className="ml-3 flex-1">
             <View className="flex-row items-center">
               <Text className="text-white font-bold text-base mr-2">
-                {activity.userName}
+                {activity.userId}
               </Text>
               <View className="bg-slate-800 px-2 py-0.5 rounded-md flex-row items-center">
                 {activity.type === "Run" && (
@@ -53,7 +58,7 @@ export default function ActivtyCard({ activity }: ActivityCardProps) {
               </View>
             </View>
             <Text className="text-gray-400 text-xs mt-0.5">
-               • Location
+              {formattedDate} • {activity.location}
             </Text>
           </View>
         </View>
@@ -74,7 +79,7 @@ export default function ActivtyCard({ activity }: ActivityCardProps) {
         <View>
           <Text className="text-gray-400 text-xs uppercase font-medium">Distance</Text>
           <Text className="text-white text-xl font-black mt-0.5">
-            {activity.distance}
+            {activity.distance} {preferences.distanceUnit}
           </Text>
         </View>
         <View>
@@ -92,9 +97,9 @@ export default function ActivtyCard({ activity }: ActivityCardProps) {
           </Text>
         </View>
         <View>
-          <Text className="text-gray-400 text-xs uppercase font-medium">Elev Gain</Text>
+          <Text className="text-gray-400 text-xs uppercase font-medium">{elev.name}</Text>
           <Text className="text-white text-xl font-black mt-0.5">
-            {activity.elevationGain}
+            {elev.value}
           </Text>
         </View>
       </View>
