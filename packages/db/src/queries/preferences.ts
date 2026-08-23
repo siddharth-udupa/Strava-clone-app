@@ -17,13 +17,7 @@ export async function createUserPreferences(userId: string) {
 
 export async function getUserPreferences(userId: string) {
   const [preferences] = await db
-    .select({
-      userId: userPreferences.userId,
-      theme: userPreferences.theme, 
-      distanceUnit: userPreferences.distanceUnit, 
-      elevationUnit: userPreferences.elevationUnit, 
-      timeFormat: userPreferences.timeFormat, 
-    })
+    .select()
     .from(userPreferences)
     .where(eq(userPreferences.userId, userId))
 

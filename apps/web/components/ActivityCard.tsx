@@ -11,10 +11,11 @@ import { useRouter } from "next/navigation"
 type ActivityProp = {
   activities: ActivityCardType,
   userPreferences: PreferencesType,
+  userName: string
 }
 
 
-export default function ActivityCard({ activities, userPreferences }: ActivityProp) {
+export default function ActivityCard({ activities, userPreferences, userName }: ActivityProp) {
 
   const router = useRouter()
 
@@ -57,7 +58,7 @@ export default function ActivityCard({ activities, userPreferences }: ActivityPr
           onClick={clickHandler} />
         <div className="mt-3 h-0 flex flex-col justify-start">
           <h3 className="mb-0 text-lg/tight font-semibold cursor-pointer"
-            onClick={clickHandler}>{activities.userName}</h3>
+            onClick={clickHandler}>{userName}</h3>
           <p className="mt-0 text-sm/tight">{formattedDate} at {formattedTime}</p>
           <p className="mt-0 text-sm/tight">location</p>
         </div>

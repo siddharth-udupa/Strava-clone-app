@@ -55,5 +55,5 @@ export function buildStreams(points: RawTrackpoint[]): ActivityStreams {
     }
   }
 
-  return { time, distance, altitude, lat, lng, speed }
+  return { timeData: time, distanceData: distance, altitudeData: altitude, speedData: speed }
 }

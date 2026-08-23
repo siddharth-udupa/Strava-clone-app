@@ -35,7 +35,6 @@ export const activities = pgTable("activities", {
   createdAt: timestamp("created_at").defaultNow().notNull()
 })
 
-export type activitiesType = typeof activities.$inferSelect
 
 // Store as JSON arrays — efficient for bulk reads, no joins needed
 export const activityStreams = pgTable("activity_streams", {
@@ -61,7 +60,16 @@ export const userPreferences = pgTable("user_preferences", {
   updatedAt: timestamp("updated_at").defaultNow().$onUpdate(() => new Date()),
 })
 
-export type preferencesType = typeof userPreferences.$inferSelect;
+export type activitiesType = typeof activities.$inferSelect
+export type activitiesInsertType = typeof activities.$inferInsert
+
+export type activityStreamsType = typeof activityStreams.$inferSelect
+export type activityStreamsInsertType = typeof activityStreams.$inferInsert
+
+
+export type preferencesType = typeof userPreferences.$inferSelect
+export type preferencesInsertType = typeof userPreferences.$inferInsert
+
 
 // Better auth tables 
 

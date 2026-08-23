@@ -14,7 +14,7 @@ export default async function Dashboard() {
     redirect("/auth")
   }
 
-  const userId = session?.user.id
+  const { id: userId , name: userName} = session.user
 
   const initialActivities = await getActivitiesByUser(session?.user.id, 5, 0)
   let userPreferences = await getUserPreferences(session?.user.id)
@@ -31,7 +31,7 @@ export default async function Dashboard() {
           className="m-4 px-6 py-4 bg-stravaorange text-white text-xl rounded-xl"
         >Upload Activitiy</Link>
       </div>
-      {initialActivities ? <ActivityFeed initialActivities={initialActivities} userPreferences={userPreferences} userId={userId} /> : <div>Something went wrong. Try again later</div>}
+      {initialActivities ? <ActivityFeed initialActivities={initialActivities} userPreferences={userPreferences} userId={userId} userName={userName} /> : <div>Something went wrong. Try again later</div>}
     </div>
   )
 }

@@ -1,31 +1,13 @@
 import { db } from "../db"
-import { activities, activityStreams } from "../schema"
-import type { ActivityStreams } from "@repo/types"
+import { activities, activitiesInsertType, activityStreams, activityStreamsInsertType, activityStreamsType } from "../schema"
 
-
-type CreateActivityFromGpxInput = {
-  userId: string,
-  type: string,
-  title: string,
-  description: string | null,
-  distance: number,         // metres
-  duration: number,          // seconds
-  elevationGain: number,     // metres (renamed from "elevation")
-  elevationLoss: number,     // metres
-  encodedPolyline: string,
-  maxSpeedMps: number,
-  startTime: Date,
-  endTime: Date,
-}
 
 type CreateActivityStreamsInput = {
   activityId: string,
-  streams: ActivityStreams,
+  streams: Omit<activityStreamsInsertType, "id" | "activityId" | "createdAt">,
 }
 
-// --- Queries ---
-
-export async function CreateActivityFromGpx(data: CreateActivityFromGpxInput) {
+export async function CreateActivityFromGpx(data: activitiesInsertType) {
   const [inserted] = await db
     .insert(activities)
     .values({
@@ -52,9 +34,9 @@ export async function CreateActivityStreams(data: CreateActivityStreamsInput) {
     .insert(activityStreams)
     .values({
       activityId: data.activityId,
-      timeData: data.streams.time,
-      distanceData: data.streams.distance,
-      altitudeData: data.streams.altitude,
-      speedData: data.streams.speed,
+      timeData: data.streams.timeData,
+      distanceData: data.streams.distanceData,
+      altitudeData: data.streams.altitudeData,
+      speedData: data.streams.speedData,
     })
 }

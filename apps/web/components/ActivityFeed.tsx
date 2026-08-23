@@ -1,14 +1,14 @@
 "use client"
 
-import { ActivityCardType } from "@repo/types"
 import { useCallback, useEffect, useRef, useState } from "react"
-import type { PreferencesType } from "@repo/types"
+import type { ActivityCardType, PreferencesType } from "@repo/types"
 import ActivityCard from "./ActivityCard"
 
-export default function ActivityFeed({ initialActivities, userPreferences, userId }: {
+export default function ActivityFeed({ initialActivities, userPreferences, userId, userName }: {
   initialActivities: ActivityCardType[],
   userPreferences: PreferencesType,
-  userId: string | undefined
+  userId: string,
+  userName: string
 }) {
 
   const [activities, setActivities] = useState(initialActivities)
@@ -54,7 +54,7 @@ export default function ActivityFeed({ initialActivities, userPreferences, userI
   return (
     <div>
       {activities.map((a) => (
-        <ActivityCard key={a.activityId} activities={a} userPreferences={userPreferences} />
+        <ActivityCard key={a.activityId} activities={a} userPreferences={userPreferences} userName={userName} />
       ))}
 
       {/* The invisible div observer */}

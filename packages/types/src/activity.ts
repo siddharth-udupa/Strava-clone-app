@@ -1,16 +1,8 @@
-import type { activitiesType, getActivityDetails } from "@repo/db"
+import type { activitiesType, activityStreamsInsertType, getActivityDetails } from "@repo/db"
 
 export type ActivityCardType = activitiesType
 
-export type ActivityStreams = {
-    // All arrays are the same length. Index i corresponds to the same moment in time.
-    time: number[],        // seconds since start (e.g. [0, 1, 2, 5, 6, ...])
-    distance: number[],    // cumulative distance in metres at each point
-    altitude: number[],    // elevation in metres at each point
-    lat: number[],         // raw lat (for GPS trace — NOT for map display, use polyline)
-    lng: number[],         // raw lng
-    speed: number[],       // speed in m/s at each point (rolling window smoothed)
-    heartrate?: number[],  // BPM if GPX has Garmin HR extension
-}
+export type ActivityStreams = Omit<activityStreamsInsertType, "id" | "activityId" | "createdAt">
 
-export type ActivityDetailsType = NonNullable<Awaited<ReturnType<typeof getActivityDetails>>>;
+export type ActivityDetailsType = NonNullable<Awaited<ReturnType<typeof getActivityDetails>>>
+

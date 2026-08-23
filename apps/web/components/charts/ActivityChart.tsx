@@ -63,7 +63,13 @@ function buildChartData(
   return points
 }
 
-function ChartTooltip({ active, payload, distLabel, elevLabel }: any) {
+function ChartTooltip(
+  { active, payload, distLabel, elevLabel }: {
+    active?: string,
+    payload?: any,
+    distLabel: string,
+    elevLabel: string
+  }) {
   if (!active || !payload?.length) return null
   const point = payload[0].payload as ChartPoint
   return (
