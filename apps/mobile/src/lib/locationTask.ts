@@ -26,8 +26,8 @@ export function subscribeToLocationUpdates(listener: LocationListener) {
  * Check if a GPS coordinate is sufficiently accurate.
  */
 export function isValidLocationPoint(point: ActivityPoint): boolean {
-  if (point.accuracy !== null && point.accuracy > 50) {
-    return false; // Filter out points with accuracy worse than 50 meters
+  if (point.accuracy !== null && point.accuracy > 100) {
+    return false; // Filter out points with accuracy worse than 100 meters
   }
   if (point.latitude === 0 && point.longitude === 0) {
     return false;

@@ -3,6 +3,7 @@ import { haversineDistance } from "@repo/gpx";
 import {
   LOCATION_TASK_NAME,
   ActivityPoint,
+  isValidLocationPoint,
   subscribeToLocationUpdates,
 } from "../lib/locationTask";
 import { saveActivityLocally, ActivitySummary } from "../lib/activityStorage";
@@ -31,21 +32,30 @@ export function useActivityRecorder(activityType: "run" | "ride" = "run") {
   const lastPointRef = useRef<ActivityPoint | null>(null);
 
   const isNativeSupported = Boolean(
-    Location &&
-      typeof Location.requestForegroundPermissionsAsync === "function" &&
-      typeof Location.startLocationUpdatesAsync === "function"
+    (Location && typeof Location.requestForegroundPermissionsAsync === "function") ||
+      (typeof navigator !== "undefined" && navigator.geolocation)
   );
 
   useEffect(() => {
     if (!isNativeSupported) {
       setErrorMsg(
-        "Native Location module not linked in this app build. Run 'npx expo run:android' or 'npx expo run:ios' to rebuild your dev client binary."
+        "Location services are unavailable on this device or build."
       );
     }
   }, [isNativeSupported]);
 
   // Handle incoming GPS points using @repo/gpx haversineDistance
   const handleNewPoint = useCallback((point: ActivityPoint) => {
+    if (!isValidLocationPoint(point)) return;
+
+    if (
+      lastPointRef.current &&
+      lastPointRef.current.latitude === point.latitude &&
+      lastPointRef.current.longitude === point.longitude
+    ) {
+      return; // Skip duplicate coordinates
+    }
+
     setPoints((prev) => [...prev, point]);
 
     if (point.speed !== null && point.speed >= 0) {
@@ -60,17 +70,72 @@ export function useActivityRecorder(activityType: "run" | "ride" = "run") {
         point.latitude,
         point.longitude
       );
-      setDistanceMeters((prev) => prev + dist);
+      if (dist > 0.5) {
+        setDistanceMeters((prev) => prev + dist);
+      }
     }
     lastPointRef.current = point;
   }, []);
 
-  // Subscribe to background location events
+  // Subscribe to both background and foreground location events when recording
   useEffect(() => {
-    if (status === "recording") {
-      const unsubscribe = subscribeToLocationUpdates(handleNewPoint);
-      return () => unsubscribe();
+    if (status !== "recording") return;
+
+    // 1. Background task updates (if active)
+    const unsubscribeBg = subscribeToLocationUpdates(handleNewPoint);
+
+    // 2. Foreground watcher for real-time live GPS stream
+    let fgSub: { remove: () => void } | null = null;
+    let webWatchId: number | null = null;
+
+    if (Location && typeof Location.watchPositionAsync === "function") {
+      Location.watchPositionAsync(
+        {
+          accuracy: Location.Accuracy.BestForNavigation,
+          timeInterval: 1000,
+          distanceInterval: 1,
+        },
+        (loc) => {
+          if (loc?.coords) {
+            handleNewPoint({
+              latitude: loc.coords.latitude,
+              longitude: loc.coords.longitude,
+              altitude: loc.coords.altitude ?? null,
+              speed: loc.coords.speed ?? null,
+              accuracy: loc.coords.accuracy ?? null,
+              timestamp: loc.timestamp,
+            });
+          }
+        }
+      ).then((sub) => {
+        fgSub = sub;
+      }).catch((err) => {
+        console.warn("[useActivityRecorder] Foreground location watch notice:", err);
+      });
+    } else if (typeof navigator !== "undefined" && navigator.geolocation) {
+      webWatchId = navigator.geolocation.watchPosition(
+        (pos) => {
+          handleNewPoint({
+            latitude: pos.coords.latitude,
+            longitude: pos.coords.longitude,
+            altitude: pos.coords.altitude,
+            speed: pos.coords.speed,
+            accuracy: pos.coords.accuracy,
+            timestamp: pos.timestamp,
+          });
+        },
+        (err) => console.warn("[useActivityRecorder] Web watchPosition notice:", err),
+        { enableHighAccuracy: true, timeout: 10000, maximumAge: 1000 }
+      );
     }
+
+    return () => {
+      unsubscribeBg();
+      if (fgSub) fgSub.remove();
+      if (webWatchId !== null && typeof navigator !== "undefined" && navigator.geolocation) {
+        navigator.geolocation.clearWatch(webWatchId);
+      }
+    };
   }, [status, handleNewPoint]);
 
   // Elapsed timer
@@ -91,39 +156,92 @@ export function useActivityRecorder(activityType: "run" | "ride" = "run") {
   const startRecording = async () => {
     try {
       setErrorMsg(null);
-      if (!isNativeSupported || !Location) {
-        setErrorMsg(
-          "Native Location module not linked in this app build. Run 'npx expo run:android' or 'npx expo run:ios' to rebuild your dev client binary."
-        );
-        return;
-      }
+      let isPermitted = false;
 
-      const fgPerm = await Location.requestForegroundPermissionsAsync();
-      if (fgPerm.status !== "granted") {
-        setErrorMsg("Foreground location permission is required.");
-        return;
-      }
+      if (Location && typeof Location.requestForegroundPermissionsAsync === "function") {
+        const fgPerm = await Location.requestForegroundPermissionsAsync();
+        if (fgPerm.status === "granted") {
+          isPermitted = true;
+        } else {
+          setErrorMsg("Foreground location permission is required.");
+          return;
+        }
 
-      const bgPerm = await Location.requestBackgroundPermissionsAsync();
-      if (bgPerm.status !== "granted") {
-        setErrorMsg("Background location permission is required for activity recording.");
-        return;
-      }
+        try {
+          const bgPerm = await Location.requestBackgroundPermissionsAsync();
+          if (bgPerm.status !== "granted") {
+            console.warn("[Recorder] Background location permission not granted. Operating in foreground mode.");
+          }
+        } catch (bgErr: any) {
+          console.warn("[Recorder] Background location permission notice:", bgErr?.message || bgErr);
+        }
 
-      const isRunning = await Location.hasStartedLocationUpdatesAsync(LOCATION_TASK_NAME);
-      if (!isRunning) {
-        await Location.startLocationUpdatesAsync(LOCATION_TASK_NAME, {
-          accuracy: Location.Accuracy.High,
-          timeInterval: 4000,
-          distanceInterval: 5,
-          showsBackgroundLocationIndicator: true,
-          foregroundService: {
-            notificationTitle: "Recording Activity",
-            notificationBody: "Strava Clone is tracking your route in the background.",
-            notificationColor: "#FC5200",
+        try {
+          if (
+            typeof Location.hasStartedLocationUpdatesAsync === "function" &&
+            typeof Location.startLocationUpdatesAsync === "function"
+          ) {
+            const isRunning = await Location.hasStartedLocationUpdatesAsync(LOCATION_TASK_NAME);
+            if (!isRunning) {
+              await Location.startLocationUpdatesAsync(LOCATION_TASK_NAME, {
+                accuracy: Location.Accuracy.High,
+                timeInterval: 3000,
+                distanceInterval: 3,
+                showsBackgroundLocationIndicator: true,
+                foregroundService: {
+                  notificationTitle: "Recording Activity",
+                  notificationBody: "Strava Clone is tracking your route.",
+                  notificationColor: "#FC5200",
+                },
+              });
+            }
+          }
+        } catch (taskErr: any) {
+          console.warn("[Recorder] Background location task registration notice:", taskErr?.message || taskErr);
+        }
+
+        // Get immediate location fix
+        try {
+          if (typeof Location.getCurrentPositionAsync === "function") {
+            const currentLoc = await Location.getCurrentPositionAsync({
+              accuracy: Location.Accuracy.Balanced,
+            });
+            if (currentLoc?.coords) {
+              handleNewPoint({
+                latitude: currentLoc.coords.latitude,
+                longitude: currentLoc.coords.longitude,
+                altitude: currentLoc.coords.altitude ?? null,
+                speed: currentLoc.coords.speed ?? null,
+                accuracy: currentLoc.coords.accuracy ?? null,
+                timestamp: currentLoc.timestamp,
+              });
+            }
+          }
+        } catch (posErr: any) {
+          console.warn("[Recorder] Immediate location fix notice:", posErr?.message || posErr);
+        }
+      } else if (typeof navigator !== "undefined" && navigator.geolocation) {
+        isPermitted = true;
+        navigator.geolocation.getCurrentPosition(
+          (pos) => {
+            handleNewPoint({
+              latitude: pos.coords.latitude,
+              longitude: pos.coords.longitude,
+              altitude: pos.coords.altitude,
+              speed: pos.coords.speed,
+              accuracy: pos.coords.accuracy,
+              timestamp: pos.timestamp,
+            });
           },
-        });
+          (err) => console.warn("[Recorder] Web initial position error:", err),
+          { enableHighAccuracy: true }
+        );
+      } else {
+        setErrorMsg("Location services are not available on this device.");
+        return;
       }
+
+      if (!isPermitted) return;
 
       startTimeRef.current = Date.now();
       setStatus("recording");
@@ -147,10 +265,18 @@ export function useActivityRecorder(activityType: "run" | "ride" = "run") {
   const stopAndSaveRecording = async (): Promise<ActivitySummary | null> => {
     try {
       setStatus("finished");
-      if (Location) {
-        const isRunning = await Location.hasStartedLocationUpdatesAsync(LOCATION_TASK_NAME);
-        if (isRunning) {
-          await Location.stopLocationUpdatesAsync(LOCATION_TASK_NAME);
+      if (
+        Location &&
+        typeof Location.hasStartedLocationUpdatesAsync === "function" &&
+        typeof Location.stopLocationUpdatesAsync === "function"
+      ) {
+        try {
+          const isRunning = await Location.hasStartedLocationUpdatesAsync(LOCATION_TASK_NAME);
+          if (isRunning) {
+            await Location.stopLocationUpdatesAsync(LOCATION_TASK_NAME);
+          }
+        } catch (e) {
+          console.warn("[Recorder] Error stopping background location updates:", e);
         }
       }
 

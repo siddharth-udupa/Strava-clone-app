@@ -2,7 +2,7 @@ import React, { useState, Suspense, lazy } from "react"
 import { View, Text, TouchableOpacity, StatusBar, ActivityIndicator } from "react-native"
 import { type EdgeInsets, useSafeAreaInsets } from "react-native-safe-area-context"
 import { useSession, signOut } from "@/lib/auth-client"
-import { Redirect } from "expo-router"
+import { Redirect, useRouter } from "expo-router"
 import { Ionicons } from "@expo/vector-icons"
 import ActivityFeed from "@/components/ActivityFeed"
 import { useActivities } from "@/hooks/useActivities"
@@ -10,10 +10,11 @@ import { useActivities } from "@/hooks/useActivities"
 // Lazy-load MapScreen component
 const LazyMapScreen = lazy(() => import("@/components/MapScreen"))
 
-type ActiveTabType = "home" | "maps" | "record" | "groups" | "you"
+type ActiveTabType = "home" | "maps" | "groups" | "you"
 
 export default function DashboardScreen() {
   const { data: session } = useSession()
+  const router = useRouter()
   const insets = useSafeAreaInsets()
   const [activeTab, setActiveTab] = useState<ActiveTabType>("home")
 
@@ -60,10 +61,6 @@ export default function DashboardScreen() {
         </Suspense>
       )}
 
-      {activeTab === "record" && ( 
-        <Redirect href={"/(app)/recorder/recorder" as any} />
-      )}
-
       {activeTab !== "home" && activeTab !== "maps" && (
         <View className="flex-1 justify-center items-center p-4">
           <Ionicons name="construct-outline" size={48} color="#FC5200" />
@@ -73,7 +70,7 @@ export default function DashboardScreen() {
       )}
 
       {/* BOTTOM TAB BAR */}
-      <BottomBar insets={insets} activeTab={activeTab} setActiveTab={setActiveTab} />
+      <BottomBar insets={insets} activeTab={activeTab} setActiveTab={setActiveTab} onRecordPress={() => router.push("/(app)/recorder/recorder" as any)} />
     </View>
   )
 }
@@ -101,8 +98,8 @@ function TopBar({ insets, handleSignOut}: { insets: EdgeInsets, handleSignOut: (
   )
 }
 
-function BottomBar({ insets, activeTab, setActiveTab }:
-  { insets: EdgeInsets, activeTab: ActiveTabType, setActiveTab: React.Dispatch<React.SetStateAction<ActiveTabType>> }) {
+function BottomBar({ insets, activeTab, setActiveTab, onRecordPress }:
+  { insets: EdgeInsets, activeTab: ActiveTabType, setActiveTab: React.Dispatch<React.SetStateAction<ActiveTabType>>, onRecordPress: () => void }) {
   return (
     <View
       style={{ paddingBottom: Math.max(insets.bottom, 25) }}
@@ -138,7 +135,7 @@ function BottomBar({ insets, activeTab, setActiveTab }:
 
       {/* Record CTA Center Button */}
       <TouchableOpacity
-        onPress={() => setActiveTab("record")}
+        onPress={onRecordPress}
         className="items-center justify-center flex-1 -mt-4"
       >
         <View className="w-13 h-13 rounded-full bg-[#FC5200] items-center justify-center shadow-lg shadow-[#FC5200]/50 border-4 border-slate-950 p-2">

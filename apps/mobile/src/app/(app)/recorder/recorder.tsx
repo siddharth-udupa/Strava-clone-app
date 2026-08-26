@@ -2,6 +2,7 @@ import { useState } from "react";
 import { View, Text, TouchableOpacity, Alert } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useRouter } from "expo-router";
+import { Ionicons } from "@expo/vector-icons";
 import { metersToDistance, formatDurationShort, formatPace, mpsToSpeed } from "@repo/units";
 import { useActivityRecorder } from "@/hooks/useActivityRecorder";
 
@@ -21,12 +22,20 @@ export default function RecorderScreen() {
     stopAndSaveRecording,
   } = useActivityRecorder(activityType);
 
+  const handleGoBack = () => {
+    if (router.canGoBack()) {
+      router.back();
+    } else {
+      router.replace("/(app)/dashboard" as any);
+    }
+  };
+
   const handleFinish = async () => {
     const saved = await stopAndSaveRecording();
     if (saved) {
       const distKm = metersToDistance(saved.distanceMeters, "metric");
       Alert.alert("Activity Saved!", `Total distance: ${distKm} km`);
-      router.back();
+      handleGoBack();
     }
   };
 
@@ -40,19 +49,38 @@ export default function RecorderScreen() {
       <View style={{ flex: 1, padding: 16, justifyContent: "space-between" }}>
         
         {/* Top Header & Type Switcher */}
-        <View style={{ alignItems: "center", marginTop: 12 }}>
-          <Text style={{ color: "#8E8E93", fontSize: 14, fontWeight: "600", textTransform: "uppercase" }}>
-            GPS Activity Recorder
-          </Text>
+        <View style={{ marginTop: 12 }}>
+          <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between" }}>
+            <TouchableOpacity
+              onPress={handleGoBack}
+              style={{
+                width: 40,
+                height: 40,
+                borderRadius: 20,
+                backgroundColor: "#1C1C1E",
+                justifyContent: "center",
+                alignItems: "center",
+              }}
+            >
+              <Ionicons name="arrow-back" size={20} color="#FFFFFF" />
+            </TouchableOpacity>
+
+            <Text style={{ color: "#8E8E93", fontSize: 14, fontWeight: "600", textTransform: "uppercase" }}>
+              GPS Activity Recorder
+            </Text>
+
+            <View style={{ width: 40 }} />
+          </View>
           
           {status === "idle" && (
-            <View style={{ flexDirection: "row", marginTop: 12, backgroundColor: "#1C1C1E", borderRadius: 8, padding: 4 }}>
+            <View style={{ flexDirection: "row", marginTop: 16, backgroundColor: "#1C1C1E", borderRadius: 8, padding: 4, alignSelf: "center" }}>
               <TouchableOpacity
                 onPress={() => setActivityType("run")}
                 style={{
-                  paddingHorizontal: 20,
+                  flex: 1,
                   paddingVertical: 8,
                   borderRadius: 6,
+                  alignItems: "center",
                   backgroundColor: activityType === "run" ? "#FC5200" : "transparent",
                 }}
               >
@@ -61,9 +89,10 @@ export default function RecorderScreen() {
               <TouchableOpacity
                 onPress={() => setActivityType("ride")}
                 style={{
-                  paddingHorizontal: 20,
+                  flex: 1,
                   paddingVertical: 8,
                   borderRadius: 6,
+                  alignItems: "center",
                   backgroundColor: activityType === "ride" ? "#FC5200" : "transparent",
                 }}
               >

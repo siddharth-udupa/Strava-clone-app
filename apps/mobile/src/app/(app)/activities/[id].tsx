@@ -113,7 +113,7 @@ export default function ActivityDetailScreen() {
           This activity doesn't exist, may have been deleted, or is temporarily unavailable.
         </Text>
         <TouchableOpacity
-          onPress={() => router.back()}
+          onPress={() => router.canGoBack() ? router.back() : router.replace("/(app)/dashboard" as any)}
           className="bg-[#FC5200] px-6 py-3 rounded-xl flex-row items-center active:opacity-80"
         >
           <Ionicons name="arrow-back" size={18} color="#FFFFFF" />
@@ -154,7 +154,7 @@ export default function ActivityDetailScreen() {
           className="absolute top-0 left-0 right-0 px-4 flex-row items-center justify-between z-20 pointer-events-box-none"
         >
           <TouchableOpacity
-            onPress={() => router.back()}
+            onPress={() => router.canGoBack() ? router.back() : router.replace("/(app)/dashboard" as any)}
             className="w-10 h-10 rounded-full bg-slate-900/90 border border-slate-700/80 items-center justify-center shadow-lg active:opacity-80"
           >
             <Ionicons name="arrow-back" size={20} color="#FFFFFF" />

@@ -11,7 +11,11 @@
       "icon": "./assets/expo.icon",
       "bundleIdentifier": "com.redstonenight.stravaclone",
       "infoPlist": {
-        "ITSAppUsesNonExemptEncryption": false
+        "ITSAppUsesNonExemptEncryption": false,
+        "UIBackgroundModes": ["location", "fetch"],
+        "NSLocationWhenInUseUsageDescription": "Strava Clone needs location access to track your runs and rides.",
+        "NSLocationAlwaysAndWhenInUseUsageDescription": "Strava Clone needs background location access to track your activity when the screen is off.",
+        "NSLocationAlwaysUsageDescription": "Strava Clone needs background location access to track your activity."
       }
     },
     "android": {
@@ -22,7 +26,14 @@
         "monochromeImage": "./assets/images/android-icon-monochrome.png"
       },
       "predictiveBackGestureEnabled": false,
-      "package": "com.redstonenight.stravaclone"
+      "package": "com.redstonenight.stravaclone",
+      "permissions": [
+        "ACCESS_COARSE_LOCATION",
+        "ACCESS_FINE_LOCATION",
+        "ACCESS_BACKGROUND_LOCATION",
+        "FOREGROUND_SERVICE",
+        "FOREGROUND_SERVICE_LOCATION"
+      ]
     },
     "web": {
       "output": "static",
@@ -39,7 +50,15 @@
           "imageWidth": 76
         }
       ],
-      "expo-image"
+      "expo-image",
+      [
+        "expo-location",
+        {
+          "locationAlwaysAndWhenInUsePermission": "Allow Strava Clone to track your activity in the background.",
+          "isAndroidBackgroundLocationEnabled": true,
+          "isAndroidForegroundServiceEnabled": true
+        }
+      ]
     ],
     "experiments": {
       "typedRoutes": true,
