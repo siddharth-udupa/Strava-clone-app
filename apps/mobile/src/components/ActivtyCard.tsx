@@ -3,15 +3,17 @@ import { Ionicons, MaterialCommunityIcons, Feather } from "@expo/vector-icons"
 import { useRouter } from "expo-router"
 import type { ActivityCardType, PreferencesType } from "@repo/types"
 import ActivityMap from "./map/Map"
-import { formatDateAndTime, toDateAndTime } from "@repo/units"
+import { toDateAndTime } from "@repo/units"
+import type { User } from "@/lib/auth-client"
 
 interface ActivityCardProps {
   activity: ActivityCardType
   preferences: PreferencesType
+  user: User
 }
 
 
-export default function ActivtyCard({ activity, preferences }: ActivityCardProps) {
+export default function ActivtyCard({ activity, preferences, user }: ActivityCardProps) {
   const router = useRouter()
   let elev = { name: "", value: 0 }
   if (activity.elevationGain > activity.elevationLoss) {
@@ -40,7 +42,7 @@ export default function ActivtyCard({ activity, preferences }: ActivityCardProps
           <View className="ml-3 flex-1">
             <View className="flex-row items-center">
               <Text className="text-white font-bold text-base mr-2">
-                {activity.userId}
+                {user.name}
               </Text>
               <View className="bg-slate-800 px-2 py-0.5 rounded-md flex-row items-center">
                 {activity.type === "Run" && (

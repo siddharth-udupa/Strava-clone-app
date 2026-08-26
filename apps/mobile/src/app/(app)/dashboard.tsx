@@ -37,6 +37,7 @@ export default function DashboardScreen() {
       {/* DYNAMIC TAB CONTENT */}
       {activeTab === "home" && (
         <ActivityFeed
+          user={session.user}
           activities={activities}
           isLoading={isLoading}
           refreshing={refreshing}
@@ -57,6 +58,10 @@ export default function DashboardScreen() {
         >
           <LazyMapScreen insets={insets} />
         </Suspense>
+      )}
+
+      {activeTab === "record" && ( 
+        <Redirect href={"/(app)/recorder/recorder" as any} />
       )}
 
       {activeTab !== "home" && activeTab !== "maps" && (

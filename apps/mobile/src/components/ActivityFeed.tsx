@@ -3,9 +3,10 @@ import ActivtyCard from "./ActivtyCard"
 import { Ionicons } from "@expo/vector-icons"
 import type { ActivityCardType, PreferencesType } from "@repo/types"
 import { useEffect, useState } from "react"
-import { authClient } from "@/lib/auth-client"
+import { authClient, type User } from "@/lib/auth-client"
 
 interface ActivityFeedProps {
+  user: User
   activities: ActivityCardType[]
   contentContainerStyle?: any
   refreshing?: boolean
@@ -17,6 +18,7 @@ interface ActivityFeedProps {
 const API_URL = process.env.EXPO_PUBLIC_API_URL ?? "http://192.168.31.240:3000"
 
 export default function ActivityFeed({
+  user,
   activities,
   contentContainerStyle,
   refreshing = false,
@@ -70,7 +72,7 @@ export default function ActivityFeed({
       data={activities}
       keyExtractor={(item) => item.activityId}
       renderItem={({ item }) => (
-        <ActivtyCard activity={item} preferences={preferences} />
+        <ActivtyCard activity={item} preferences={preferences} user={user} />
       )}
       ListHeaderComponent={ListHeaderComponent}
       ListEmptyComponent={
