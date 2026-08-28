@@ -167,37 +167,47 @@ export function useActivityRecorder(activityType: "run" | "ride" = "run") {
           return;
         }
 
+        let hasBgPermission = false;
         try {
           const bgPerm = await Location.requestBackgroundPermissionsAsync();
-          if (bgPerm.status !== "granted") {
+          if (bgPerm.status === "granted") {
+            hasBgPermission = true;
+          } else {
             console.warn("[Recorder] Background location permission not granted. Operating in foreground mode.");
           }
         } catch (bgErr: any) {
           console.warn("[Recorder] Background location permission notice:", bgErr?.message || bgErr);
         }
 
-        try {
-          if (
-            typeof Location.hasStartedLocationUpdatesAsync === "function" &&
-            typeof Location.startLocationUpdatesAsync === "function"
-          ) {
-            const isRunning = await Location.hasStartedLocationUpdatesAsync(LOCATION_TASK_NAME);
-            if (!isRunning) {
-              await Location.startLocationUpdatesAsync(LOCATION_TASK_NAME, {
-                accuracy: Location.Accuracy.High,
-                timeInterval: 3000,
-                distanceInterval: 3,
-                showsBackgroundLocationIndicator: true,
-                foregroundService: {
-                  notificationTitle: "Recording Activity",
-                  notificationBody: "Strava Clone is tracking your route.",
-                  notificationColor: "#FC5200",
-                },
-              });
+        if (hasBgPermission) {
+          try {
+            const isTaskAvailable = typeof (Location as any)?.isTaskManagerAvailableAsync === "function"
+              ? await (Location as any).isTaskManagerAvailableAsync()
+              : true;
+
+            if (
+              isTaskAvailable &&
+              typeof Location.hasStartedLocationUpdatesAsync === "function" &&
+              typeof Location.startLocationUpdatesAsync === "function"
+            ) {
+              const isRunning = await Location.hasStartedLocationUpdatesAsync(LOCATION_TASK_NAME);
+              if (!isRunning) {
+                await Location.startLocationUpdatesAsync(LOCATION_TASK_NAME, {
+                  accuracy: Location.Accuracy.High,
+                  timeInterval: 3000,
+                  distanceInterval: 3,
+                  showsBackgroundLocationIndicator: true,
+                  foregroundService: {
+                    notificationTitle: "Recording Activity",
+                    notificationBody: "Strava Clone is tracking your route.",
+                    notificationColor: "#FC5200",
+                  },
+                });
+              }
             }
+          } catch (taskErr: any) {
+            console.warn("[Recorder] Background location task registration notice:", taskErr?.message || taskErr);
           }
-        } catch (taskErr: any) {
-          console.warn("[Recorder] Background location task registration notice:", taskErr?.message || taskErr);
         }
 
         // Get immediate location fix
