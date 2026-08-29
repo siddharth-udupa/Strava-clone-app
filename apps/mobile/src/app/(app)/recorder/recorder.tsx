@@ -1,14 +1,14 @@
-import { useState } from "react";
-import { View, Text, TouchableOpacity, Alert } from "react-native";
-import { SafeAreaView } from "react-native-safe-area-context";
-import { useRouter } from "expo-router";
-import { Ionicons } from "@expo/vector-icons";
-import { metersToDistance, formatDurationShort, formatPace, mpsToSpeed } from "@repo/units";
-import { useActivityRecorder } from "@/hooks/useActivityRecorder";
+import { useState } from "react"
+import { View, Text, TouchableOpacity, Alert } from "react-native"
+import { SafeAreaView } from "react-native-safe-area-context"
+import { useRouter } from "expo-router"
+import { Ionicons } from "@expo/vector-icons"
+import { metersToDistance, formatDurationShort, formatPace, mpsToSpeed } from "@repo/units"
+import { useActivityRecorder } from "@/hooks/useActivityRecorder"
 
 export default function RecorderScreen() {
-  const router = useRouter();
-  const [activityType, setActivityType] = useState<"run" | "ride">("run");
+  const router = useRouter()
+  const [activityType, setActivityType] = useState<"run" | "ride">("run")
   const {
     status,
     points,
@@ -20,29 +20,29 @@ export default function RecorderScreen() {
     pauseRecording,
     resumeRecording,
     stopAndSaveRecording,
-  } = useActivityRecorder(activityType);
+  } = useActivityRecorder(activityType)
 
   const handleGoBack = () => {
     if (router.canGoBack()) {
-      router.back();
+      router.back()
     } else {
-      router.replace("/(app)/dashboard" as any);
+      router.replace("/(app)/dashboard" as any)
     }
-  };
+  }
 
   const handleFinish = async () => {
-    const saved = await stopAndSaveRecording();
+    const saved = await stopAndSaveRecording()
     if (saved) {
-      const distKm = metersToDistance(saved.distanceMeters, "metric");
-      Alert.alert("Activity Saved!", `Total distance: ${distKm} km`);
-      handleGoBack();
+      const distKm = metersToDistance(saved.distanceMeters, "metric")
+      Alert.alert("Activity Saved!", `Total distance: ${distKm} km`)
+      handleGoBack()
     }
-  };
+  }
 
-  const formattedDistance = metersToDistance(distanceMeters, "metric").toFixed(2);
-  const formattedTime = formatDurationShort(elapsedSeconds);
-  const formattedPace = formatPace(elapsedSeconds, distanceMeters, "min/km");
-  const formattedSpeed = mpsToSpeed(currentSpeedMps, "km/h");
+  const formattedDistance = metersToDistance(distanceMeters, "metric").toFixed(2)
+  const formattedTime = formatDurationShort(elapsedSeconds)
+  const formattedPace = formatPace(elapsedSeconds, distanceMeters, "min/km")
+  const formattedSpeed = mpsToSpeed(currentSpeedMps, "km/h")
 
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: "#121212" }}>
@@ -237,5 +237,5 @@ export default function RecorderScreen() {
 
       </View>
     </SafeAreaView>
-  );
+  )
 }

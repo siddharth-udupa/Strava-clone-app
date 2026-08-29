@@ -1,5 +1,5 @@
-import AsyncStorage from "@react-native-async-storage/async-storage";
-import { ActivityPoint } from "./locationTask";
+import AsyncStorage from "@react-native-async-storage/async-storage"
+import { ActivityPoint } from "./locationTask"
 
 export type ActivitySummary = {
   id: string;
@@ -13,27 +13,27 @@ export type ActivitySummary = {
   avgSpeedMps: number;
   maxSpeedMps: number;
   points: ActivityPoint[];
-};
+}
 
-const ACTIVITIES_KEY = "@strava_clone_activities_v1";
+const ACTIVITIES_KEY = "@strava_clone_activities_v1"
 
 export async function saveActivityLocally(activity: ActivitySummary): Promise<void> {
   try {
-    const existing = await getSavedActivitiesLocally();
-    const updated = [activity, ...existing];
-    await AsyncStorage.setItem(ACTIVITIES_KEY, JSON.stringify(updated));
+    const existing = await getSavedActivitiesLocally()
+    const updated = [activity, ...existing]
+    await AsyncStorage.setItem(ACTIVITIES_KEY, JSON.stringify(updated))
   } catch (err) {
-    console.error("Failed to save activity locally:", err);
+    console.error("Failed to save activity locally:", err)
   }
 }
 
 export async function getSavedActivitiesLocally(): Promise<ActivitySummary[]> {
   try {
-    const raw = await AsyncStorage.getItem(ACTIVITIES_KEY);
-    if (!raw) return [];
-    return JSON.parse(raw);
+    const raw = await AsyncStorage.getItem(ACTIVITIES_KEY)
+    if (!raw) return []
+    return JSON.parse(raw)
   } catch (err) {
-    console.error("Failed to load local activities:", err);
-    return [];
+    console.error("Failed to load local activities:", err)
+    return []
   }
 }
