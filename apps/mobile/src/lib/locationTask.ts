@@ -1,3 +1,6 @@
+import { Platform } from "react-native"
+import { appendPointsToActiveSession } from "./activeSessionStorage"
+
 export const LOCATION_TASK_NAME = "activity-location-task"
 
 export type ActivityPoint = {
@@ -62,6 +65,79 @@ export async function cleanupStaleLocationTasks(): Promise<void> {
   }
 }
 
+/**
+ * Attempt to start background location tracking using Expo Location & TaskManager with Android Foreground Service.
+ */
+export async function startBackgroundLocationTask(): Promise<boolean> {
+  if (!Location || typeof Location.requestBackgroundPermissionsAsync !== "function") {
+    console.warn("[LOCATION_TASK] Location module unavailable for background tracking.")
+    return false
+  }
+
+  try {
+    const isTaskAvailable = typeof (Location as any)?.isTaskManagerAvailableAsync === "function"
+      ? await (Location as any).isTaskManagerAvailableAsync()
+      : true
+
+    if (!isTaskAvailable) {
+      console.warn("[LOCATION_TASK] TaskManager is not available on this platform.")
+      return false
+    }
+
+    const bgPerm = await Location.requestBackgroundPermissionsAsync()
+    if (bgPerm.status !== "granted") {
+      console.warn("[LOCATION_TASK] Background location permission denied.")
+      return false
+    }
+
+    const isRunning = await Location.hasStartedLocationUpdatesAsync(LOCATION_TASK_NAME)
+    if (!isRunning) {
+      const taskOptions: any = {
+        accuracy: Location.Accuracy.BestForNavigation,
+        timeInterval: 2000,
+        distanceInterval: 2,
+        deferredUpdatesInterval: 2000,
+        deferredUpdatesDistance: 2,
+        showsBackgroundLocationIndicator: true,
+        pausesLocationUpdatesAutomatically: false,
+      }
+
+      if (Platform.OS === "android") {
+        taskOptions.foregroundService = {
+          notificationTitle: "Recording Activity",
+          notificationBody: "Strava Clone is recording your route in the background.",
+          notificationColor: "#FC5200",
+        }
+      }
+
+      await Location.startLocationUpdatesAsync(LOCATION_TASK_NAME, taskOptions)
+    }
+
+    const verifiedRunning = await Location.hasStartedLocationUpdatesAsync(LOCATION_TASK_NAME)
+    console.log("[LOCATION_TASK] Background location started successfully:", verifiedRunning)
+    return verifiedRunning
+  } catch (err) {
+    console.warn("[LOCATION_TASK] Error starting background location task:", err)
+    return false
+  }
+}
+
+/**
+ * Stop background location tracking task if active.
+ */
+export async function stopBackgroundLocationTask(): Promise<void> {
+  if (!Location || typeof Location.hasStartedLocationUpdatesAsync !== "function") return
+  try {
+    const isRunning = await Location.hasStartedLocationUpdatesAsync(LOCATION_TASK_NAME)
+    if (isRunning && typeof Location.stopLocationUpdatesAsync === "function") {
+      await Location.stopLocationUpdatesAsync(LOCATION_TASK_NAME)
+      console.log("[LOCATION_TASK] Stopped background location task.")
+    }
+  } catch (err) {
+    console.warn("[LOCATION_TASK] Error stopping background location task:", err)
+  }
+}
+
 if (TaskManager && typeof TaskManager.defineTask === "function") {
   try {
     TaskManager.defineTask(LOCATION_TASK_NAME, async ({ data, error }) => {
@@ -76,6 +152,8 @@ if (TaskManager && typeof TaskManager.defineTask === "function") {
         const { locations } = data as { locations: any[] }
         if (!Array.isArray(locations)) return
 
+        const validPoints: ActivityPoint[] = []
+
         for (const loc of locations) {
           if (!loc || !loc.coords) continue
           const point: ActivityPoint = {
@@ -88,10 +166,15 @@ if (TaskManager && typeof TaskManager.defineTask === "function") {
           }
 
           if (isValidLocationPoint(point)) {
+            validPoints.push(point)
             listeners.forEach((listener) => listener(point))
           } else {
             console.log("[LOCATION_TASK] Rejected inaccurate point:", loc.coords.accuracy)
           }
+        }
+
+        if (validPoints.length > 0) {
+          await appendPointsToActiveSession(validPoints)
         }
       } catch (err) {
         console.warn("[LOCATION_TASK] Error processing background location payload:", err)
@@ -101,4 +184,3 @@ if (TaskManager && typeof TaskManager.defineTask === "function") {
     console.warn("[LOCATION_TASK] defineTask registration warning:", e)
   }
 }
-

@@ -1,15 +1,26 @@
 import { useState, useEffect, useRef, useCallback } from "react"
-import { Platform } from "react-native"
-import { haversineDistance } from "@repo/gpx"
+import { Platform, AppState, AppStateStatus } from "react-native"
 import {
   LOCATION_TASK_NAME,
   ActivityPoint,
   isValidLocationPoint,
   subscribeToLocationUpdates,
+  startBackgroundLocationTask,
+  stopBackgroundLocationTask,
 } from "../lib/locationTask"
 import { saveActivityLocally, ActivitySummary } from "../lib/activityStorage"
+import {
+  ActiveSession,
+  createActiveSession,
+  getActiveSession,
+  appendPointsToActiveSession,
+  pauseActiveSession,
+  resumeActiveSession,
+  clearActiveSession,
+  computeElapsedSeconds,
+} from "../lib/activeSessionStorage"
 
-// Safely require expo-location inside try/catch so missing native module doesn't throw top-level uncaught exception
+// Safely require expo-location inside try/catch
 let Location: typeof import("expo-location") | null = null
 try {
   Location = require("expo-location")
@@ -26,16 +37,13 @@ export function useActivityRecorder(activityType: "run" | "ride" = "run") {
   const [elapsedSeconds, setElapsedSeconds] = useState(0)
   const [currentSpeedMps, setCurrentSpeedMps] = useState(0)
   const [maxSpeedMps, setMaxSpeedMps] = useState(0)
+  const [isBackgroundActive, setIsBackgroundActive] = useState(false)
   const [errorMsg, setErrorMsg] = useState<string | null>(null)
 
-  const startTimeRef = useRef<number | null>(null)
+  const activeSessionRef = useRef<ActiveSession | null>(null)
   const timerRef = useRef<NodeJS.Timeout | null>(null)
-  const lastPointRef = useRef<ActivityPoint | null>(null)
-  const statusRef = useRef<RecorderState>("idle")
-
-  useEffect(() => {
-    statusRef.current = status
-  }, [status])
+  const fgSubRef = useRef<{ remove: () => void } | null>(null)
+  const webWatchIdRef = useRef<number | null>(null)
 
   const isNativeSupported = Boolean(
     (Location && typeof Location.requestForegroundPermissionsAsync === "function") ||
@@ -44,130 +52,67 @@ export function useActivityRecorder(activityType: "run" | "ride" = "run") {
 
   useEffect(() => {
     if (!isNativeSupported) {
-      setErrorMsg(
-        "Location services are unavailable on this device or build."
-      )
+      setErrorMsg("Location services are unavailable on this device or build.")
     }
   }, [isNativeSupported])
 
-  // Handle incoming GPS points using @repo/gpx haversineDistance
-  const handleNewPoint = useCallback((point: ActivityPoint) => {
-    if (!isValidLocationPoint(point)) return
-
-    if (
-      lastPointRef.current &&
-      lastPointRef.current.latitude === point.latitude &&
-      lastPointRef.current.longitude === point.longitude
-    ) {
-      return // Skip duplicate coordinates
-    }
-
-    setPoints((prev) => [...prev, point])
-
-    if (point.speed !== null && point.speed >= 0) {
-      setCurrentSpeedMps(point.speed)
-      setMaxSpeedMps((prevMax) => Math.max(prevMax, point.speed || 0))
-    }
-
-    if (lastPointRef.current) {
-      const dist = haversineDistance(
-        lastPointRef.current.latitude,
-        lastPointRef.current.longitude,
-        point.latitude,
-        point.longitude
-      )
-      if (dist > 0.5) {
-        setDistanceMeters((prev) => prev + dist)
-      }
-    }
-    lastPointRef.current = point
+  // Sync state from storage session object
+  const syncWithSession = useCallback((session: ActiveSession | null) => {
+    if (!session) return
+    activeSessionRef.current = session
+    setStatus(session.status)
+    setPoints(session.points)
+    setDistanceMeters(session.distanceMeters)
+    setCurrentSpeedMps(session.currentSpeedMps)
+    setMaxSpeedMps(session.maxSpeedMps)
+    setIsBackgroundActive(session.isBackgroundActive)
+    setElapsedSeconds(computeElapsedSeconds(session))
   }, [])
 
-  // Subscribe to both background and foreground location events when recording
+  // Hydrate active session on initial mount
   useEffect(() => {
-    if (status !== "recording") return
+    let isMounted = true
+    getActiveSession().then((session) => {
+      if (isMounted && session) {
+        syncWithSession(session)
+      }
+    })
+    return () => {
+      isMounted = false
+    }
+  }, [syncWithSession])
 
-    // 1. Background task updates (if active)
-    const unsubscribeBg = subscribeToLocationUpdates(handleNewPoint)
-
-    // 2. Foreground watcher for real-time live GPS stream
-    let fgSub: { remove: () => void } | null = null
-    let webWatchId: number | null = null
-
-    if (Location && typeof Location.watchPositionAsync === "function") {
-      Location.watchPositionAsync(
-        {
-          accuracy: Location.Accuracy.BestForNavigation,
-          timeInterval: 1000,
-          distanceInterval: 1,
-        },
-        (loc) => {
-          if (loc?.coords) {
-            handleNewPoint({
-              latitude: loc.coords.latitude,
-              longitude: loc.coords.longitude,
-              altitude: loc.coords.altitude ?? null,
-              speed: loc.coords.speed ?? null,
-              accuracy: loc.coords.accuracy ?? null,
-              timestamp: loc.timestamp,
-            })
-          }
+  // Re-sync with disk state whenever AppState transitions back to active (e.g. phone unlocked)
+  useEffect(() => {
+    const handleAppStateChange = async (nextState: AppStateStatus) => {
+      if (nextState === "active") {
+        const session = await getActiveSession()
+        if (session) {
+          syncWithSession(session)
         }
-      ).then((sub) => {
-        fgSub = sub
-      }).catch((err) => {
-        console.warn("[useActivityRecorder] Foreground location watch notice:", err)
-      })
-    } else if (typeof navigator !== "undefined" && navigator.geolocation) {
-      webWatchId = navigator.geolocation.watchPosition(
-        (pos) => {
-          handleNewPoint({
-            latitude: pos.coords.latitude,
-            longitude: pos.coords.longitude,
-            altitude: pos.coords.altitude,
-            speed: pos.coords.speed,
-            accuracy: pos.coords.accuracy,
-            timestamp: pos.timestamp,
-          })
-        },
-        (err) => console.warn("[useActivityRecorder] Web watchPosition notice:", err),
-        { enableHighAccuracy: true, timeout: 10000, maximumAge: 1000 }
-      )
-    }
-
-    return () => {
-      unsubscribeBg()
-      if (fgSub) fgSub.remove()
-      if (webWatchId !== null && typeof navigator !== "undefined" && navigator.geolocation) {
-        navigator.geolocation.clearWatch(webWatchId)
       }
     }
-  }, [status, handleNewPoint])
 
-  // Safety unmount cleanup to stop background updates if active session is left
-  useEffect(() => {
+    const sub = AppState.addEventListener("change", handleAppStateChange)
     return () => {
-      if (
-        Location &&
-        typeof Location.hasStartedLocationUpdatesAsync === "function" &&
-        typeof Location.stopLocationUpdatesAsync === "function"
-      ) {
-        Location.hasStartedLocationUpdatesAsync(LOCATION_TASK_NAME).then((isRunning) => {
-          if (isRunning && statusRef.current !== "recording" && statusRef.current !== "paused") {
-            Location?.stopLocationUpdatesAsync(LOCATION_TASK_NAME).catch((err) => {
-              console.warn("[useActivityRecorder] Safety unmount cleanup notice:", err)
-            })
-          }
-        }).catch(() => {})
-      }
+      sub.remove()
     }
-  }, [])
+  }, [syncWithSession])
 
-  // Elapsed timer
+  // Periodic elapsed timer calculation using precise timestamps
   useEffect(() => {
-    if (status === "recording") {
+    if (status === "recording" || status === "paused") {
       timerRef.current = setInterval(() => {
-        setElapsedSeconds((prev) => prev + 1)
+        if (activeSessionRef.current) {
+          setElapsedSeconds(computeElapsedSeconds(activeSessionRef.current))
+        } else {
+          getActiveSession().then((session) => {
+            if (session) {
+              activeSessionRef.current = session
+              setElapsedSeconds(computeElapsedSeconds(session))
+            }
+          })
+        }
       }, 1000)
     } else {
       if (timerRef.current) clearInterval(timerRef.current)
@@ -177,166 +122,254 @@ export function useActivityRecorder(activityType: "run" | "ride" = "run") {
     }
   }, [status])
 
-  // Request permissions & start recording
+  // Handler for live updates received by UI listeners
+  const handleLivePoint = useCallback((point: ActivityPoint) => {
+    if (!isValidLocationPoint(point)) return
+    setPoints((prev) => [...prev, point])
+    if (point.speed !== null && point.speed >= 0) {
+      setCurrentSpeedMps(point.speed)
+      setMaxSpeedMps((prevMax) => Math.max(prevMax, point.speed || 0))
+    }
+
+    // Refresh metrics periodically from storage for accuracy
+    getActiveSession().then((session) => {
+      if (session) {
+        activeSessionRef.current = session
+        setDistanceMeters(session.distanceMeters)
+        setMaxSpeedMps(session.maxSpeedMps)
+        setElapsedSeconds(computeElapsedSeconds(session))
+      }
+    })
+  }, [])
+
+  // Priority 1 vs Priority 2 Subscription Handling
+  useEffect(() => {
+    if (status !== "recording") {
+      // Clean up watchers if recording stops or pauses
+      if (fgSubRef.current) {
+        fgSubRef.current.remove()
+        fgSubRef.current = null
+      }
+      if (webWatchIdRef.current !== null && typeof navigator !== "undefined" && navigator.geolocation) {
+        navigator.geolocation.clearWatch(webWatchIdRef.current)
+        webWatchIdRef.current = null
+      }
+      return
+    }
+
+    // Always subscribe to background task events for live UI updates
+    const unsubscribeBg = subscribeToLocationUpdates(handleLivePoint)
+
+    // Priority 1: If Background tracking is active, DO NOT start foreground watcher
+    if (isBackgroundActive) {
+      console.log("[useActivityRecorder] Background location tracking active (Priority 1). Foreground watcher disabled.")
+      return () => {
+        unsubscribeBg()
+      }
+    }
+
+    // Priority 2 Fallback: Background tracking inactive, start Foreground Watcher
+    console.warn("[useActivityRecorder] Operating in Foreground Fallback mode (Priority 2).")
+
+    if (Location && typeof Location.watchPositionAsync === "function") {
+      Location.watchPositionAsync(
+        {
+          accuracy: Location.Accuracy.BestForNavigation,
+          timeInterval: 1000,
+          distanceInterval: 1,
+        },
+        async (loc) => {
+          if (loc?.coords) {
+            const point: ActivityPoint = {
+              latitude: loc.coords.latitude,
+              longitude: loc.coords.longitude,
+              altitude: loc.coords.altitude ?? null,
+              speed: loc.coords.speed ?? null,
+              accuracy: loc.coords.accuracy ?? null,
+              timestamp: loc.timestamp,
+            }
+            handleLivePoint(point)
+            await appendPointsToActiveSession([point])
+          }
+        }
+      )
+        .then((sub) => {
+          fgSubRef.current = sub
+        })
+        .catch((err) => {
+          console.warn("[useActivityRecorder] Foreground position watch notice:", err)
+        })
+    } else if (typeof navigator !== "undefined" && navigator.geolocation) {
+      webWatchIdRef.current = navigator.geolocation.watchPosition(
+        async (pos) => {
+          const point: ActivityPoint = {
+            latitude: pos.coords.latitude,
+            longitude: pos.coords.longitude,
+            altitude: pos.coords.altitude,
+            speed: pos.coords.speed,
+            accuracy: pos.coords.accuracy,
+            timestamp: pos.timestamp,
+          }
+          handleLivePoint(point)
+          await appendPointsToActiveSession([point])
+        },
+        (err) => console.warn("[useActivityRecorder] Web watchPosition notice:", err),
+        { enableHighAccuracy: true, timeout: 10000, maximumAge: 1000 }
+      )
+    }
+
+    return () => {
+      unsubscribeBg()
+      if (fgSubRef.current) {
+        fgSubRef.current.remove()
+        fgSubRef.current = null
+      }
+      if (webWatchIdRef.current !== null && typeof navigator !== "undefined" && navigator.geolocation) {
+        navigator.geolocation.clearWatch(webWatchIdRef.current)
+        webWatchIdRef.current = null
+      }
+    }
+  }, [status, isBackgroundActive, handleLivePoint])
+
+  // Start Recording Action
   const startRecording = async () => {
     try {
       setErrorMsg(null)
-      let isPermitted = false
 
+      // Step 1: Request Foreground Location Permission
       if (Location && typeof Location.requestForegroundPermissionsAsync === "function") {
         const fgPerm = await Location.requestForegroundPermissionsAsync()
-        if (fgPerm.status === "granted") {
-          isPermitted = true
-        } else {
+        if (fgPerm.status !== "granted") {
           setErrorMsg("Foreground location permission is required.")
           return
         }
+      } else if (typeof navigator === "undefined" || !navigator.geolocation) {
+        setErrorMsg("Location services are not available on this device.")
+        return
+      }
 
-        let hasBgPermission = false
+      // Step 2: Priority 1 - Attempt Background Location Task
+      let bgSuccess = false
+      try {
+        bgSuccess = await startBackgroundLocationTask()
+      } catch (bgErr: any) {
+        console.warn("[useActivityRecorder] Background location start notice:", bgErr?.message || bgErr)
+      }
+
+      const activeBg = bgSuccess
+      setIsBackgroundActive(activeBg)
+
+      // Create persistent active session in AsyncStorage
+      const session = await createActiveSession(activityType, activeBg)
+      activeSessionRef.current = session
+      setStatus("recording")
+
+      // Get initial position fix to populate starting point immediately
+      if (Location && typeof Location.getCurrentPositionAsync === "function") {
         try {
-          const bgPerm = await Location.requestBackgroundPermissionsAsync()
-          if (bgPerm.status === "granted") {
-            hasBgPermission = true
-          } else {
-            console.warn("[Recorder] Background location permission not granted. Operating in foreground mode.")
-          }
-        } catch (bgErr: any) {
-          console.warn("[Recorder] Background location permission notice:", bgErr?.message || bgErr)
-        }
-
-        if (hasBgPermission) {
-          try {
-            const isTaskAvailable = typeof (Location as any)?.isTaskManagerAvailableAsync === "function"
-              ? await (Location as any).isTaskManagerAvailableAsync()
-              : true
-
-            if (
-              isTaskAvailable &&
-              typeof Location.hasStartedLocationUpdatesAsync === "function" &&
-              typeof Location.startLocationUpdatesAsync === "function"
-            ) {
-              const isRunning = await Location.hasStartedLocationUpdatesAsync(LOCATION_TASK_NAME)
-              if (!isRunning) {
-                const taskOptions: any = {
-                  accuracy: Location.Accuracy.High,
-                  timeInterval: 3000,
-                  distanceInterval: 3,
-                }
-                if (Platform.OS === "ios") {
-                  taskOptions.showsBackgroundLocationIndicator = true
-                }
-                if (Platform.OS === "android") {
-                  taskOptions.foregroundService = {
-                    notificationTitle: "Recording Activity",
-                    notificationBody: "Strava Clone is tracking your route.",
-                    notificationColor: "#FC5200",
-                  }
-                }
-                await Location.startLocationUpdatesAsync(LOCATION_TASK_NAME, taskOptions)
-              }
+          const currentLoc = await Location.getCurrentPositionAsync({
+            accuracy: Location.Accuracy.Balanced,
+          })
+          if (currentLoc?.coords) {
+            const initialPoint: ActivityPoint = {
+              latitude: currentLoc.coords.latitude,
+              longitude: currentLoc.coords.longitude,
+              altitude: currentLoc.coords.altitude ?? null,
+              speed: currentLoc.coords.speed ?? null,
+              accuracy: currentLoc.coords.accuracy ?? null,
+              timestamp: currentLoc.timestamp,
             }
-          } catch (taskErr: any) {
-            console.warn("[Recorder] Background location task registration notice:", taskErr?.message || taskErr)
-          }
-        }
-
-        // Get immediate location fix
-        try {
-          if (typeof Location.getCurrentPositionAsync === "function") {
-            const currentLoc = await Location.getCurrentPositionAsync({
-              accuracy: Location.Accuracy.Balanced,
-            })
-            if (currentLoc?.coords) {
-              handleNewPoint({
-                latitude: currentLoc.coords.latitude,
-                longitude: currentLoc.coords.longitude,
-                altitude: currentLoc.coords.altitude ?? null,
-                speed: currentLoc.coords.speed ?? null,
-                accuracy: currentLoc.coords.accuracy ?? null,
-                timestamp: currentLoc.timestamp,
-              })
-            }
+            handleLivePoint(initialPoint)
+            await appendPointsToActiveSession([initialPoint])
           }
         } catch (posErr: any) {
-          console.warn("[Recorder] Immediate location fix notice:", posErr?.message || posErr)
+          console.warn("[useActivityRecorder] Initial location fix notice:", posErr?.message || posErr)
         }
       } else if (typeof navigator !== "undefined" && navigator.geolocation) {
-        isPermitted = true
         navigator.geolocation.getCurrentPosition(
-          (pos) => {
-            handleNewPoint({
+          async (pos) => {
+            const initialPoint: ActivityPoint = {
               latitude: pos.coords.latitude,
               longitude: pos.coords.longitude,
               altitude: pos.coords.altitude,
               speed: pos.coords.speed,
               accuracy: pos.coords.accuracy,
               timestamp: pos.timestamp,
-            })
+            }
+            handleLivePoint(initialPoint)
+            await appendPointsToActiveSession([initialPoint])
           },
-          (err) => console.warn("[Recorder] Web initial position error:", err),
+          (err) => console.warn("[useActivityRecorder] Web initial position error:", err),
           { enableHighAccuracy: true }
         )
-      } else {
-        setErrorMsg("Location services are not available on this device.")
-        return
       }
-
-      if (!isPermitted) return
-
-      startTimeRef.current = Date.now()
-      setStatus("recording")
     } catch (err: any) {
       console.error("Start activity error:", err)
       setErrorMsg(err.message || "Failed to start recording.")
     }
   }
 
-  // Pause recording
-  const pauseRecording = () => {
-    setStatus("paused")
+  // Pause Recording Action
+  const pauseRecording = async () => {
+    const updated = await pauseActiveSession()
+    if (updated) {
+      syncWithSession(updated)
+    } else {
+      setStatus("paused")
+    }
   }
 
-  // Resume recording
-  const resumeRecording = () => {
-    setStatus("recording")
+  // Resume Recording Action
+  const resumeRecording = async () => {
+    const updated = await resumeActiveSession()
+    if (updated) {
+      syncWithSession(updated)
+    } else {
+      setStatus("recording")
+    }
   }
 
-  // Stop & Save Activity
+  // Stop & Save Activity Action
   const stopAndSaveRecording = async (): Promise<ActivitySummary | null> => {
     try {
       setStatus("finished")
-      if (
-        Location &&
-        typeof Location.hasStartedLocationUpdatesAsync === "function" &&
-        typeof Location.stopLocationUpdatesAsync === "function"
-      ) {
-        try {
-          const isRunning = await Location.hasStartedLocationUpdatesAsync(LOCATION_TASK_NAME)
-          if (isRunning) {
-            console.log(points, distanceMeters, elapsedSeconds, maxSpeedMps, currentSpeedMps)
-            await Location.stopLocationUpdatesAsync(LOCATION_TASK_NAME)
-          }
-        } catch (e) {
-          console.warn("[Recorder] Error stopping background location updates:", e)
-        }
-      }
 
-      const avgSpeedMps = elapsedSeconds > 0 ? distanceMeters / elapsedSeconds : 0
+      // Stop background task if active
+      await stopBackgroundLocationTask()
+
+      // Fetch final active session state from disk
+      const session = (await getActiveSession()) || activeSessionRef.current
+      const finalPoints = session?.points || points
+      const finalDistance = session?.distanceMeters || distanceMeters
+      const finalDuration = session ? computeElapsedSeconds(session) : elapsedSeconds
+      const finalMaxSpeed = session?.maxSpeedMps || maxSpeedMps
+
+      const avgSpeedMps = finalDuration > 0 ? finalDistance / finalDuration : 0
       const summary: ActivitySummary = {
-        id: `act_${Date.now()}`,
+        id: session?.id || `act_${Date.now()}`,
         type: activityType,
         title: `${activityType === "run" ? "Morning Run" : "Ride"}`,
-        startedAt: startTimeRef.current || Date.now(),
+        startedAt: session?.startedAt || Date.now(),
         endedAt: Date.now(),
-        distanceMeters,
-        durationSeconds: elapsedSeconds,
-        movingTimeSeconds: elapsedSeconds,
+        distanceMeters: finalDistance,
+        durationSeconds: finalDuration,
+        movingTimeSeconds: finalDuration,
         avgSpeedMps,
-        maxSpeedMps,
-        points,
+        maxSpeedMps: finalMaxSpeed,
+        points: finalPoints,
       }
 
       await saveActivityLocally(summary)
+      await clearActiveSession()
+
+      activeSessionRef.current = null
+      setPoints([])
+      setDistanceMeters(0)
+      setElapsedSeconds(0)
+      setCurrentSpeedMps(0)
+      setMaxSpeedMps(0)
+      setIsBackgroundActive(false)
+
       return summary
     } catch (err: any) {
       console.error("Stop activity error:", err)
@@ -352,6 +385,7 @@ export function useActivityRecorder(activityType: "run" | "ride" = "run") {
     elapsedSeconds,
     currentSpeedMps,
     maxSpeedMps,
+    isBackgroundActive,
     errorMsg,
     isNativeSupported,
     startRecording,
@@ -360,4 +394,3 @@ export function useActivityRecorder(activityType: "run" | "ride" = "run") {
     stopAndSaveRecording,
   }
 }
-

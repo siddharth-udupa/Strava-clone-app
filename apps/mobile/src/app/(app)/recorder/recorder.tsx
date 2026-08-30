@@ -15,6 +15,7 @@ export default function RecorderScreen() {
     distanceMeters,
     elapsedSeconds,
     currentSpeedMps,
+    isBackgroundActive,
     errorMsg,
     startRecording,
     pauseRecording,
@@ -98,6 +99,40 @@ export default function RecorderScreen() {
               >
                 <Text style={{ color: "#FFF", fontWeight: "700" }}>Ride</Text>
               </TouchableOpacity>
+            </View>
+          )}
+
+          {status !== "idle" && (
+            <View style={{ flexDirection: "row", justifyContent: "center", marginTop: 12 }}>
+              <View
+                style={{
+                  flexDirection: "row",
+                  alignItems: "center",
+                  backgroundColor: isBackgroundActive ? "#1C3829" : "#382D1C",
+                  paddingHorizontal: 12,
+                  paddingVertical: 4,
+                  borderRadius: 12,
+                  gap: 6,
+                }}
+              >
+                <View
+                  style={{
+                    width: 8,
+                    height: 8,
+                    borderRadius: 4,
+                    backgroundColor: isBackgroundActive ? "#30D158" : "#FF9500",
+                  }}
+                />
+                <Text
+                  style={{
+                    color: isBackgroundActive ? "#30D158" : "#FF9500",
+                    fontSize: 12,
+                    fontWeight: "600",
+                  }}
+                >
+                  {isBackgroundActive ? "Background GPS Active (Priority 1)" : "Foreground GPS (Fallback)"}
+                </Text>
+              </View>
             </View>
           )}
         </View>
