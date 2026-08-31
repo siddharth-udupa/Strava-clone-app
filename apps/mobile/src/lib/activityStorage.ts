@@ -1,19 +1,6 @@
 import AsyncStorage from "@react-native-async-storage/async-storage"
-import { ActivityPoint } from "./locationTask"
+import type { ActivitySummary } from "@repo/types"
 
-export type ActivitySummary = {
-  id: string;
-  type: "run" | "ride" | "hike" | "walk";
-  title: string;
-  startedAt: number;
-  endedAt?: number;
-  distanceMeters: number;
-  durationSeconds: number;
-  movingTimeSeconds: number;
-  avgSpeedMps: number;
-  maxSpeedMps: number;
-  points: ActivityPoint[];
-}
 
 const ACTIVITIES_KEY = "@strava_clone_activities_v1"
 

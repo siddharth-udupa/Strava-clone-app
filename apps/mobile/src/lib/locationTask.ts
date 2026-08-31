@@ -1,16 +1,9 @@
 import { Platform } from "react-native"
 import { appendPointsToActiveSession } from "./activeSessionStorage"
+import { type LocationTaskOptions } from "expo-location"
+import type { ActivityPoint } from "@repo/types"
 
 export const LOCATION_TASK_NAME = "activity-location-task"
-
-export type ActivityPoint = {
-  latitude: number
-  longitude: number
-  altitude: number | null
-  speed: number | null
-  accuracy: number | null
-  timestamp: number
-}
 
 type LocationListener = (point: ActivityPoint) => void
 const listeners = new Set<LocationListener>()
@@ -92,14 +85,14 @@ export async function startBackgroundLocationTask(): Promise<boolean> {
 
     const isRunning = await Location.hasStartedLocationUpdatesAsync(LOCATION_TASK_NAME)
     if (!isRunning) {
-      const taskOptions: any = {
+      const taskOptions: LocationTaskOptions = {
         accuracy: Location.Accuracy.BestForNavigation,
         timeInterval: 2000,
         distanceInterval: 2,
         deferredUpdatesInterval: 2000,
         deferredUpdatesDistance: 2,
         showsBackgroundLocationIndicator: true,
-        pausesLocationUpdatesAutomatically: false,
+        pausesUpdatesAutomatically: false,
       }
 
       if (Platform.OS === "android") {

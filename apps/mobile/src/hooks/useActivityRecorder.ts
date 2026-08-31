@@ -1,16 +1,14 @@
 import { useState, useEffect, useRef, useCallback } from "react"
-import { Platform, AppState, AppStateStatus } from "react-native"
+import { AppState, type AppStateStatus } from "react-native"
 import {
-  LOCATION_TASK_NAME,
-  ActivityPoint,
   isValidLocationPoint,
   subscribeToLocationUpdates,
   startBackgroundLocationTask,
   stopBackgroundLocationTask,
 } from "../lib/locationTask"
-import { saveActivityLocally, ActivitySummary } from "../lib/activityStorage"
+import { saveActivityLocally } from "../lib/activityStorage"
 import {
-  ActiveSession,
+  type ActiveSession,
   createActiveSession,
   getActiveSession,
   appendPointsToActiveSession,
@@ -19,6 +17,8 @@ import {
   clearActiveSession,
   computeElapsedSeconds,
 } from "../lib/activeSessionStorage"
+import type { ActivitySummary, ActivityPoint } from "@repo/types"
+
 
 // Safely require expo-location inside try/catch
 let Location: typeof import("expo-location") | null = null

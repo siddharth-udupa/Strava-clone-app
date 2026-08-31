@@ -1,9 +1,13 @@
-import { CreateActivity, getActivitiesByUser } from "@repo/db"
+import { CreateActivity, CreateActivityStreams, getActivitiesByUser } from "@repo/db"
 import { NextRequest, NextResponse } from "next/server"
-import { CreateActivitySchema, MetaDataSchema } from "@repo/validation"
 import { auth } from "@/lib/auth"
 import { headers } from "next/headers"
-import { distanceToMeters, durationToSeconds, elevationToMeters } from "@repo/units"
+import {
+  normalizeMobileActivity,
+  normalizeGpxActivity,
+  normalizeManualActivity,
+  type NormalizedActivityData,
+} from "./normalization"
 
 export async function GET(req: NextRequest) {
   try {
@@ -18,54 +22,91 @@ export async function GET(req: NextRequest) {
     const offset = page * limit
     const data = await getActivitiesByUser(userId, limit, offset)
     return NextResponse.json(data)
-  }
-  catch (err) {
-    console.log(err)
+  } catch (err) {
+    console.error(err)
     return NextResponse.json({ error: err }, { status: 500 })
   }
 }
 
-
 export async function POST(req: NextRequest) {
   try {
     const session = await auth.api.getSession({
-      headers: await headers()
+      headers: await headers(),
     })
 
     if (!session) {
-      return Response.json({ error: "Unauthorized" }, { status: 401 })
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
     }
 
     const userId = session.user.id
-    const { data, metaData } = await req.json()
+    const body = await req.json()
+    const { source, data } = body ?? {}
 
-    const DataSuccess = CreateActivitySchema.safeParse(data)
-    const MetaDataSuccess = MetaDataSchema.safeParse(metaData)
+    if (!source || !data) {
+      return NextResponse.json(
+        { error: "Missing required fields: 'source' and 'data'" },
+        { status: 400 }
+      )
+    }
 
-    if (!DataSuccess.success || !MetaDataSuccess.success) {
-      return NextResponse.json({ error: "Invalid Input", DetailedError: DataSuccess.error }, { status: 400 })
+    let normalized: NormalizedActivityData
+
+    try {
+      switch (source) {
+        case "mobile":
+          normalized = normalizeMobileActivity(data)
+          break
+        case "gpx":
+          normalized = normalizeGpxActivity(data)
+          break
+        case "manual":
+          normalized = normalizeManualActivity(data)
+          break
+        default:
+          return NextResponse.json(
+            { error: `Unsupported activity source: '${source}'` },
+            { status: 400 }
+          )
+      }
+    } catch (err: any) {
+      return NextResponse.json(
+        {
+          error: "Invalid input or normalization failed",
+          detailedError: err?.errors ?? err?.message ?? err,
+        },
+        { status: 400 }
+      )
     }
 
     const dbPayload = {
-      userId: userId,
-      type: DataSuccess.data.type,
-      title: DataSuccess.data.title,
-      description: DataSuccess.data.description,
-      distance: distanceToMeters(DataSuccess.data.distance, MetaDataSuccess.data.distanceUnit),
-      duration: durationToSeconds(DataSuccess.data.duration),
-      elevationGain: elevationToMeters(DataSuccess.data.elevationGain, MetaDataSuccess.data.elevUnitGain),
-      elevationLoss: elevationToMeters(DataSuccess.data.elevationLoss, MetaDataSuccess.data.elevUnitLoss),
-      startTime: DataSuccess.data.startTime ? new Date(DataSuccess.data.startTime) : undefined,
-      endTime: DataSuccess.data.endTime ? new Date(DataSuccess.data.endTime) : undefined,
+      userId,
+      type: normalized.type,
+      title: normalized.title,
+      description: normalized.description ?? undefined,
+      location: normalized.location ?? undefined,
+      distance: normalized.distance,
+      duration: normalized.duration,
+      elevationGain: normalized.elevationGain,
+      elevationLoss: normalized.elevationLoss,
+      encodedPolyline: normalized.encodedPolyline ?? undefined,
+      maxSpeedMps: normalized.maxSpeedMps ?? undefined,
+      startTime: normalized.startTime ?? undefined,
+      endTime: normalized.endTime ?? undefined,
     }
 
     const res = await CreateActivity(dbPayload)
+    const createdActivity = Array.isArray(res) ? res[0] : res
 
-    return NextResponse.json({ success: true, data: res }, { status: 200 })
-  }
-  catch (err) {
+    if (normalized.streams && createdActivity?.activityId) {
+      await CreateActivityStreams({
+        activityId: createdActivity.activityId,
+        streams: normalized.streams,
+      })
+    }
+
+    return NextResponse.json({ success: true, data: res }, { status: 201 })
+  } catch (err) {
     console.error(err)
     return NextResponse.json({ error: "Internal server error" }, { status: 500 })
   }
-
 }

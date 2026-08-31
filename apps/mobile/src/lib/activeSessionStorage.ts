@@ -1,6 +1,6 @@
 import AsyncStorage from "@react-native-async-storage/async-storage"
 import { haversineDistance } from "@repo/gpx"
-import { ActivityPoint, isValidLocationPoint } from "./locationTask"
+import { type ActivityPoint, isValidLocationPoint } from "./locationTask"
 
 export type ActiveSessionStatus = "recording" | "paused"
 
