@@ -30,23 +30,30 @@ export default function GPXUploadPage() {
     setIsUploading(true)
     setMessage(null)
 
-    const formData = new FormData()
-    formData.append("file", file)
-    if (data.title) formData.append("title", data.title)
-    if (data.description) formData.append("description", data.description)
-
     try {
-      const response = await fetch("/api/activities/upload", {
+      const xmlContent = await file.text()
+      const response = await fetch("/api/activities", {
         method: "POST",
-        body: formData,
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          source: "gpx",
+          data: {
+            title: data.title || file.name.replace(/\.gpx$/i, ""),
+            description: data.description || null,
+            xmlContent,
+          },
+        }),
       })
 
       if (response.ok) {
         setMessage("GPX file uploaded successfully!")
         setFile(null)
+        setData({ title: "", description: "" })
       } else {
         const errorData = await response.json().catch(() => null)
-        setMessage(`Upload failed: ${errorData?.message || response.statusText}`)
+        setMessage(`Upload failed: ${errorData?.detailedError || errorData?.error || response.statusText}`)
       }
     }
     catch (error) {

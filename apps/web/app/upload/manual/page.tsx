@@ -53,18 +53,22 @@ export default function Manual() {
   //   )
 
   const submitHandler = async () => {
-
     try {
       const res = await fetch("/api/activities", {
         method: "POST",
         headers: {
           "Content-Type": "application/json"
         },
-        body: JSON.stringify({ data: data, metaData: metaData })
+        body: JSON.stringify({
+          source: "manual",
+          data: {
+            ...data,
+            metaData,
+          },
+        })
       })
 
       const resData = await res.json()
-
       console.log(resData)
     }
     catch (err) {
