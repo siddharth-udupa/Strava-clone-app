@@ -47,12 +47,29 @@ export default function Map({
 
   const cameraBounds = useMemo(() => {
     if (!routeGeoJSON || points.length < 2) return null
-    return [
-      Math.min(...points.map((p) => p.lng)),
-      Math.min(...points.map((p) => p.lat)),
-      Math.max(...points.map((p) => p.lng)),
-      Math.max(...points.map((p) => p.lat)),
-    ] as import("@maplibre/maplibre-react-native").LngLatBounds
+    let minLng = Math.min(...points.map((p) => p.lng))
+    let minLat = Math.min(...points.map((p) => p.lat))
+    let maxLng = Math.max(...points.map((p) => p.lng))
+    let maxLat = Math.max(...points.map((p) => p.lat))
+
+    // Minimum bounding box span (~400 meters) to avoid excessive zooming on short distance movements
+    const MIN_DELTA = 0.004
+    const lngDelta = maxLng - minLng
+    const latDelta = maxLat - minLat
+
+    if (lngDelta < MIN_DELTA) {
+      const midLng = (minLng + maxLng) / 2
+      minLng = midLng - MIN_DELTA / 2
+      maxLng = midLng + MIN_DELTA / 2
+    }
+
+    if (latDelta < MIN_DELTA) {
+      const midLat = (minLat + maxLat) / 2
+      minLat = midLat - MIN_DELTA / 2
+      maxLat = midLat + MIN_DELTA / 2
+    }
+
+    return [minLng, minLat, maxLng, maxLat] as import("@maplibre/maplibre-react-native").LngLatBounds
   }, [routeGeoJSON, points])
 
   const defaultCenter: [number, number] = [-0.09, 51.505]
@@ -110,6 +127,8 @@ export default function Map({
         compass={false}
       >
         <Camera
+          maxZoom={16}
+          minZoom={2}
           duration={0}
           {...(cameraBounds
             ? {

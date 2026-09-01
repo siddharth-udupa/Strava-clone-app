@@ -14,6 +14,7 @@ export function getMapLibreStyle(id: TileProviderId = DEFAULT_TILE_PROVIDER) {
         type: provider.type,
         tiles: [tileUrl],
         tileSize: provider.tileSize ?? 256,
+        maxzoom: provider.maxZoom ?? 19,
       },
     },
     layers: [
@@ -22,7 +23,7 @@ export function getMapLibreStyle(id: TileProviderId = DEFAULT_TILE_PROVIDER) {
         type: provider.type,
         source: "base-map",
         minzoom: 0,
-        maxzoom: provider.maxZoom ?? 22,
+        maxzoom: 24,
       },
     ],
   }

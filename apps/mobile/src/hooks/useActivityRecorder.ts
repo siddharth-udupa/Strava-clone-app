@@ -18,6 +18,7 @@ import {
   computeElapsedSeconds,
 } from "../lib/activeSessionStorage"
 import type { ActivitySummary, ActivityPoint } from "@repo/types"
+import { authClient } from "../lib/auth-client"
 
 
 // Safely require expo-location inside try/catch
@@ -363,15 +364,12 @@ export function useActivityRecorder(activityType: "run" | "ride" = "run") {
 
       const API_URL = process.env.EXPO_PUBLIC_API_URL ?? "http://192.168.31.240:3000"
       try {
-        await fetch(`${API_URL}/api/activities`, {
+        await authClient.$fetch(`${API_URL}/api/activities`, {
           method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({
+          body: {
             source: "mobile",
             data: summary,
-          }),
+          },
         })
       } catch (postErr) {
         console.warn("Failed to post mobile activity to server:", postErr)
