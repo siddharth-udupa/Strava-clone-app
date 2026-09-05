@@ -20,389 +20,342 @@ import {
 import type { ActivitySummary, ActivityPoint } from "@repo/types"
 import { authClient } from "../lib/auth-client"
 
-
-// Safely require expo-location inside try/catch
+// ---------------------------------------------------------------------------
+// Expo-location (optional native module)
+// ---------------------------------------------------------------------------
 let Location: typeof import("expo-location") | null = null
 try {
   Location = require("expo-location")
-} catch (e) {
-  console.warn("[useActivityRecorder] expo-location native module unavailable:", e)
+} catch {
+  // Native module unavailable — will fall back to web geolocation
 }
 
+// ---------------------------------------------------------------------------
+// Types
+// ---------------------------------------------------------------------------
 export type RecorderState = "idle" | "recording" | "paused" | "finished"
 
-export function useActivityRecorder(activityType: "run" | "ride" = "run") {
-  const [status, setStatus] = useState<RecorderState>("idle")
-  const [points, setPoints] = useState<ActivityPoint[]>([])
-  const [distanceMeters, setDistanceMeters] = useState(0)
-  const [elapsedSeconds, setElapsedSeconds] = useState(0)
-  const [currentSpeedMps, setCurrentSpeedMps] = useState(0)
-  const [maxSpeedMps, setMaxSpeedMps] = useState(0)
-  const [isBackgroundActive, setIsBackgroundActive] = useState(false)
-  const [errorMsg, setErrorMsg] = useState<string | null>(null)
+type RecorderData = {
+  status: RecorderState
+  points: ActivityPoint[]
+  distanceMeters: number
+  elapsedSeconds: number
+  currentSpeedMps: number
+  maxSpeedMps: number
+  isBackgroundActive: boolean
+  errorMsg: string | null
+}
 
-  const activeSessionRef = useRef<ActiveSession | null>(null)
+const INITIAL_DATA: RecorderData = {
+  status: "idle",
+  points: [],
+  distanceMeters: 0,
+  elapsedSeconds: 0,
+  currentSpeedMps: 0,
+  maxSpeedMps: 0,
+  isBackgroundActive: false,
+  errorMsg: null,
+}
+
+// ---------------------------------------------------------------------------
+// Helpers
+// ---------------------------------------------------------------------------
+
+/** Convert raw coords (from expo-location or web geolocation) into an ActivityPoint. */
+function coordsToPoint(coords: { latitude: number; longitude: number; altitude?: number | null; speed?: number | null; accuracy?: number | null }, timestamp: number): ActivityPoint {
+  return {
+    latitude: coords.latitude,
+    longitude: coords.longitude,
+    altitude: coords.altitude ?? null,
+    speed: coords.speed ?? null,
+    accuracy: coords.accuracy ?? null,
+    timestamp,
+  }
+}
+
+/** Get the current position using expo-location or web geolocation. */
+function getCurrentPosition(): Promise<ActivityPoint | null> {
+  return new Promise((resolve) => {
+    if (Location && typeof Location.getCurrentPositionAsync === "function") {
+      Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.Balanced })
+        .then((loc) => resolve(loc?.coords ? coordsToPoint(loc.coords, loc.timestamp) : null))
+        .catch(() => resolve(null))
+    } else if (typeof navigator !== "undefined" && navigator.geolocation) {
+      navigator.geolocation.getCurrentPosition(
+        (pos) => resolve(coordsToPoint(pos.coords, pos.timestamp)),
+        () => resolve(null),
+        { enableHighAccuracy: true },
+      )
+    } else {
+      resolve(null)
+    }
+  })
+}
+
+const hasExpoLocation = Boolean(Location && typeof Location.requestForegroundPermissionsAsync === "function")
+const hasWebGeolocation = typeof navigator !== "undefined" && !!navigator.geolocation
+const isLocationAvailable = hasExpoLocation || hasWebGeolocation
+
+const API_URL = process.env.EXPO_PUBLIC_API_URL!
+
+// ---------------------------------------------------------------------------
+// Hook
+// ---------------------------------------------------------------------------
+export function useActivityRecorder(activityType: "run" | "ride" = "run") {
+  const [data, setData] = useState<RecorderData>(INITIAL_DATA)
+  const sessionRef = useRef<ActiveSession | null>(null)
   const timerRef = useRef<NodeJS.Timeout | null>(null)
   const fgSubRef = useRef<{ remove: () => void } | null>(null)
-  const webWatchIdRef = useRef<number | null>(null)
+  const webWatchRef = useRef<number | null>(null)
 
-  const isNativeSupported = Boolean(
-    (Location && typeof Location.requestForegroundPermissionsAsync === "function") ||
-      (typeof navigator !== "undefined" && navigator.geolocation)
-  )
-
-  useEffect(() => {
-    if (!isNativeSupported) {
-      setErrorMsg("Location services are unavailable on this device or build.")
-    }
-  }, [isNativeSupported])
-
-  // Sync state from storage session object
-  const syncWithSession = useCallback((session: ActiveSession | null) => {
-    if (!session) return
-    activeSessionRef.current = session
-    setStatus(session.status)
-    setPoints(session.points)
-    setDistanceMeters(session.distanceMeters)
-    setCurrentSpeedMps(session.currentSpeedMps)
-    setMaxSpeedMps(session.maxSpeedMps)
-    setIsBackgroundActive(session.isBackgroundActive)
-    setElapsedSeconds(computeElapsedSeconds(session))
+  // ---- Sync all UI state from a session object ----
+  const syncFromSession = useCallback((session: ActiveSession) => {
+    sessionRef.current = session
+    setData((prev) => ({
+      ...prev,
+      status: session.status,
+      points: session.points,
+      distanceMeters: session.distanceMeters,
+      currentSpeedMps: session.currentSpeedMps,
+      maxSpeedMps: session.maxSpeedMps,
+      isBackgroundActive: session.isBackgroundActive,
+      elapsedSeconds: computeElapsedSeconds(session),
+    }))
   }, [])
 
-  // Hydrate active session on initial mount
+  // ---- Show error if location is completely unavailable ----
   useEffect(() => {
-    let isMounted = true
+    if (!isLocationAvailable) {
+      setData((prev) => ({ ...prev, errorMsg: "Location services are unavailable on this device or build." }))
+    }
+  }, [])
+
+  // ---- Hydrate from disk on mount ----
+  useEffect(() => {
+    let mounted = true
     getActiveSession().then((session) => {
-      if (isMounted && session) {
-        syncWithSession(session)
-      }
+      if (mounted && session) syncFromSession(session)
     })
-    return () => {
-      isMounted = false
-    }
-  }, [syncWithSession])
+    return () => { mounted = false }
+  }, [syncFromSession])
 
-  // Re-sync with disk state whenever AppState transitions back to active (e.g. phone unlocked)
+  // ---- Re-sync when app returns to foreground ----
   useEffect(() => {
-    const handleAppStateChange = async (nextState: AppStateStatus) => {
-      if (nextState === "active") {
+    const onAppState = async (state: AppStateStatus) => {
+      if (state === "active") {
         const session = await getActiveSession()
-        if (session) {
-          syncWithSession(session)
-        }
+        if (session) syncFromSession(session)
       }
     }
+    const sub = AppState.addEventListener("change", onAppState)
+    return () => sub.remove()
+  }, [syncFromSession])
 
-    const sub = AppState.addEventListener("change", handleAppStateChange)
-    return () => {
-      sub.remove()
-    }
-  }, [syncWithSession])
-
-  // Periodic elapsed timer calculation using precise timestamps
+  // ---- Elapsed-time ticker (1 s) ----
   useEffect(() => {
-    if (status === "recording" || status === "paused") {
-      timerRef.current = setInterval(() => {
-        if (activeSessionRef.current) {
-          setElapsedSeconds(computeElapsedSeconds(activeSessionRef.current))
-        } else {
-          getActiveSession().then((session) => {
-            if (session) {
-              activeSessionRef.current = session
-              setElapsedSeconds(computeElapsedSeconds(session))
-            }
-          })
-        }
-      }, 1000)
-    } else {
+    if (data.status !== "recording" && data.status !== "paused") {
       if (timerRef.current) clearInterval(timerRef.current)
+      return
     }
-    return () => {
-      if (timerRef.current) clearInterval(timerRef.current)
-    }
-  }, [status])
 
-  // Handler for live updates received by UI listeners
+    timerRef.current = setInterval(() => {
+      const s = sessionRef.current
+      if (s) setData((prev) => ({ ...prev, elapsedSeconds: computeElapsedSeconds(s) }))
+    }, 1000)
+
+    return () => { if (timerRef.current) clearInterval(timerRef.current) }
+  }, [data.status])
+
+  // ---- Handle a new GPS point from any source ----
   const handleLivePoint = useCallback((point: ActivityPoint) => {
     if (!isValidLocationPoint(point)) return
-    setPoints((prev) => [...prev, point])
-    if (point.speed !== null && point.speed >= 0) {
-      setCurrentSpeedMps(point.speed)
-      setMaxSpeedMps((prevMax) => Math.max(prevMax, point.speed || 0))
-    }
 
-    // Refresh metrics periodically from storage for accuracy
+    setData((prev) => ({
+      ...prev,
+      points: [...prev.points, point],
+      currentSpeedMps: point.speed !== null && point.speed >= 0 ? point.speed : prev.currentSpeedMps,
+      maxSpeedMps: point.speed !== null && point.speed >= 0 ? Math.max(prev.maxSpeedMps, point.speed) : prev.maxSpeedMps,
+    }))
+
+    // Keep session ref fresh for the timer (lightweight — just read from storage)
     getActiveSession().then((session) => {
       if (session) {
-        activeSessionRef.current = session
-        setDistanceMeters(session.distanceMeters)
-        setMaxSpeedMps(session.maxSpeedMps)
-        setElapsedSeconds(computeElapsedSeconds(session))
+        sessionRef.current = session
+        setData((prev) => ({ ...prev, distanceMeters: session.distanceMeters }))
       }
     })
   }, [])
 
-  // Priority 1 vs Priority 2 Subscription Handling
+  // ---- Location subscription management ----
   useEffect(() => {
-    if (status !== "recording") {
-      // Clean up watchers if recording stops or pauses
-      if (fgSubRef.current) {
-        fgSubRef.current.remove()
-        fgSubRef.current = null
-      }
-      if (webWatchIdRef.current !== null && typeof navigator !== "undefined" && navigator.geolocation) {
-        navigator.geolocation.clearWatch(webWatchIdRef.current)
-        webWatchIdRef.current = null
+    // Clean up watchers when not recording
+    if (data.status !== "recording") {
+      if (fgSubRef.current) { fgSubRef.current.remove(); fgSubRef.current = null }
+      if (webWatchRef.current !== null && hasWebGeolocation) {
+        navigator.geolocation.clearWatch(webWatchRef.current)
+        webWatchRef.current = null
       }
       return
     }
 
-    // Always subscribe to background task events for live UI updates
-    const unsubscribeBg = subscribeToLocationUpdates(handleLivePoint)
+    // Always listen to background-task events for live UI
+    const unsubBg = subscribeToLocationUpdates(handleLivePoint)
 
-    // Priority 1: If Background tracking is active, DO NOT start foreground watcher
-    if (isBackgroundActive) {
-      console.log("[useActivityRecorder] Background location tracking active (Priority 1). Foreground watcher disabled.")
-      return () => {
-        unsubscribeBg()
-      }
+    // If background tracking is active, that's all we need
+    if (data.isBackgroundActive) {
+      return () => unsubBg()
     }
 
-    // Priority 2 Fallback: Background tracking inactive, start Foreground Watcher
-    console.warn("[useActivityRecorder] Operating in Foreground Fallback mode (Priority 2).")
-
+    // Foreground fallback: start a watcher
     if (Location && typeof Location.watchPositionAsync === "function") {
       Location.watchPositionAsync(
-        {
-          accuracy: Location.Accuracy.BestForNavigation,
-          timeInterval: 1000,
-          distanceInterval: 1,
-        },
+        { accuracy: Location.Accuracy.BestForNavigation, timeInterval: 1000, distanceInterval: 1 },
         async (loc) => {
-          if (loc?.coords) {
-            const point: ActivityPoint = {
-              latitude: loc.coords.latitude,
-              longitude: loc.coords.longitude,
-              altitude: loc.coords.altitude ?? null,
-              speed: loc.coords.speed ?? null,
-              accuracy: loc.coords.accuracy ?? null,
-              timestamp: loc.timestamp,
-            }
-            handleLivePoint(point)
-            await appendPointsToActiveSession([point])
-          }
-        }
-      )
-        .then((sub) => {
-          fgSubRef.current = sub
-        })
-        .catch((err) => {
-          console.warn("[useActivityRecorder] Foreground position watch notice:", err)
-        })
-    } else if (typeof navigator !== "undefined" && navigator.geolocation) {
-      webWatchIdRef.current = navigator.geolocation.watchPosition(
-        async (pos) => {
-          const point: ActivityPoint = {
-            latitude: pos.coords.latitude,
-            longitude: pos.coords.longitude,
-            altitude: pos.coords.altitude,
-            speed: pos.coords.speed,
-            accuracy: pos.coords.accuracy,
-            timestamp: pos.timestamp,
-          }
+          if (!loc?.coords) return
+          const point = coordsToPoint(loc.coords, loc.timestamp)
           handleLivePoint(point)
           await appendPointsToActiveSession([point])
         },
-        (err) => console.warn("[useActivityRecorder] Web watchPosition notice:", err),
-        { enableHighAccuracy: true, timeout: 10000, maximumAge: 1000 }
+      )
+        .then((sub) => { fgSubRef.current = sub })
+        .catch(() => { })
+    } else if (hasWebGeolocation) {
+      webWatchRef.current = navigator.geolocation.watchPosition(
+        async (pos) => {
+          const point = coordsToPoint(pos.coords, pos.timestamp)
+          handleLivePoint(point)
+          await appendPointsToActiveSession([point])
+        },
+        () => { },
+        { enableHighAccuracy: true, timeout: 10000, maximumAge: 1000 },
       )
     }
 
     return () => {
-      unsubscribeBg()
-      if (fgSubRef.current) {
-        fgSubRef.current.remove()
-        fgSubRef.current = null
-      }
-      if (webWatchIdRef.current !== null && typeof navigator !== "undefined" && navigator.geolocation) {
-        navigator.geolocation.clearWatch(webWatchIdRef.current)
-        webWatchIdRef.current = null
+      unsubBg()
+      if (fgSubRef.current) { fgSubRef.current.remove(); fgSubRef.current = null }
+      if (webWatchRef.current !== null && hasWebGeolocation) {
+        navigator.geolocation.clearWatch(webWatchRef.current)
+        webWatchRef.current = null
       }
     }
-  }, [status, isBackgroundActive, handleLivePoint])
+  }, [data.status, data.isBackgroundActive, handleLivePoint])
 
-  // Start Recording Action
+  // ===========================================================================
+  // Actions
+  // ===========================================================================
+
   const startRecording = async () => {
     try {
-      setErrorMsg(null)
+      setData((prev) => ({ ...prev, errorMsg: null }))
 
-      // Step 1: Request Foreground Location Permission
-      if (Location && typeof Location.requestForegroundPermissionsAsync === "function") {
-        const fgPerm = await Location.requestForegroundPermissionsAsync()
-        if (fgPerm.status !== "granted") {
-          setErrorMsg("Foreground location permission is required.")
+      // Request foreground permission
+      if (hasExpoLocation) {
+        const perm = await Location!.requestForegroundPermissionsAsync()
+        if (perm.status !== "granted") {
+          setData((prev) => ({ ...prev, errorMsg: "Foreground location permission is required." }))
           return
         }
-      } else if (typeof navigator === "undefined" || !navigator.geolocation) {
-        setErrorMsg("Location services are not available on this device.")
+      } else if (!hasWebGeolocation) {
+        setData((prev) => ({ ...prev, errorMsg: "Location services are not available on this device." }))
         return
       }
 
-      // Step 2: Priority 1 - Attempt Background Location Task
-      let bgSuccess = false
-      try {
-        bgSuccess = await startBackgroundLocationTask()
-      } catch (bgErr: any) {
-        console.warn("[useActivityRecorder] Background location start notice:", bgErr?.message || bgErr)
-      }
+      // Attempt background tracking
+      let bgActive = false
+      try { bgActive = await startBackgroundLocationTask() } catch { }
 
-      const activeBg = bgSuccess
-      setIsBackgroundActive(activeBg)
+      // Create session & start recording
+      const session = await createActiveSession(activityType, bgActive)
+      sessionRef.current = session
+      setData((prev) => ({ ...prev, status: "recording", isBackgroundActive: bgActive }))
 
-      // Create persistent active session in AsyncStorage
-      const session = await createActiveSession(activityType, activeBg)
-      activeSessionRef.current = session
-      setStatus("recording")
-
-      // Get initial position fix to populate starting point immediately
-      if (Location && typeof Location.getCurrentPositionAsync === "function") {
-        try {
-          const currentLoc = await Location.getCurrentPositionAsync({
-            accuracy: Location.Accuracy.Balanced,
-          })
-          if (currentLoc?.coords) {
-            const initialPoint: ActivityPoint = {
-              latitude: currentLoc.coords.latitude,
-              longitude: currentLoc.coords.longitude,
-              altitude: currentLoc.coords.altitude ?? null,
-              speed: currentLoc.coords.speed ?? null,
-              accuracy: currentLoc.coords.accuracy ?? null,
-              timestamp: currentLoc.timestamp,
-            }
-            handleLivePoint(initialPoint)
-            await appendPointsToActiveSession([initialPoint])
-          }
-        } catch (posErr: any) {
-          console.warn("[useActivityRecorder] Initial location fix notice:", posErr?.message || posErr)
-        }
-      } else if (typeof navigator !== "undefined" && navigator.geolocation) {
-        navigator.geolocation.getCurrentPosition(
-          async (pos) => {
-            const initialPoint: ActivityPoint = {
-              latitude: pos.coords.latitude,
-              longitude: pos.coords.longitude,
-              altitude: pos.coords.altitude,
-              speed: pos.coords.speed,
-              accuracy: pos.coords.accuracy,
-              timestamp: pos.timestamp,
-            }
-            handleLivePoint(initialPoint)
-            await appendPointsToActiveSession([initialPoint])
-          },
-          (err) => console.warn("[useActivityRecorder] Web initial position error:", err),
-          { enableHighAccuracy: true }
-        )
+      // Grab initial position
+      const initialPoint = await getCurrentPosition()
+      if (initialPoint) {
+        handleLivePoint(initialPoint)
+        await appendPointsToActiveSession([initialPoint])
       }
     } catch (err: any) {
       console.error("Start activity error:", err)
-      setErrorMsg(err.message || "Failed to start recording.")
+      setData((prev) => ({ ...prev, errorMsg: err.message || "Failed to start recording." }))
     }
   }
 
-  // Pause Recording Action
   const pauseRecording = async () => {
-    const updated = await pauseActiveSession()
-    if (updated) {
-      syncWithSession(updated)
-    } else {
-      setStatus("paused")
-    }
+    const session = await pauseActiveSession()
+    if (session) syncFromSession(session)
+    else setData((prev) => ({ ...prev, status: "paused" }))
   }
 
-  // Resume Recording Action
   const resumeRecording = async () => {
-    const updated = await resumeActiveSession()
-    if (updated) {
-      syncWithSession(updated)
-    } else {
-      setStatus("recording")
-    }
+    const session = await resumeActiveSession()
+    if (session) syncFromSession(session)
+    else setData((prev) => ({ ...prev, status: "recording" }))
   }
 
-  // Stop & Save Activity Action
   const stopAndSaveRecording = async (): Promise<ActivitySummary | null> => {
     try {
-      setStatus("finished")
-
-      // Stop background task if active
+      setData((prev) => ({ ...prev, status: "finished" }))
       await stopBackgroundLocationTask()
 
-      // Fetch final active session state from disk
-      const session = (await getActiveSession()) || activeSessionRef.current
-      const finalPoints = session?.points || points
-      const finalDistance = session?.distanceMeters || distanceMeters
-      const finalDuration = session ? computeElapsedSeconds(session) : elapsedSeconds
-      const finalMaxSpeed = session?.maxSpeedMps || maxSpeedMps
+      // Read final session from disk (fallback to in-memory ref)
+      const session = (await getActiveSession()) || sessionRef.current
+      const finalPoints = session?.points || data.points
+      const finalDistance = session?.distanceMeters || data.distanceMeters
+      const finalDuration = session ? computeElapsedSeconds(session) : data.elapsedSeconds
+      const finalMaxSpeed = session?.maxSpeedMps || data.maxSpeedMps
 
-      const avgSpeedMps = finalDuration > 0 ? finalDistance / finalDuration : 0
       const summary: ActivitySummary = {
         id: session?.id || `act_${Date.now()}`,
         type: activityType,
-        title: `${activityType === "run" ? "Morning Run" : "Ride"}`,
+        title: activityType === "run" ? "Morning Run" : "Ride",
         startedAt: session?.startedAt || Date.now(),
         endedAt: Date.now(),
         distanceMeters: finalDistance,
         durationSeconds: finalDuration,
         movingTimeSeconds: finalDuration,
-        avgSpeedMps,
+        avgSpeedMps: finalDuration > 0 ? finalDistance / finalDuration : 0,
         maxSpeedMps: finalMaxSpeed,
         points: finalPoints,
       }
 
       await saveActivityLocally(summary)
 
-      const API_URL = process.env.EXPO_PUBLIC_API_URL ?? "http://192.168.31.240:3000"
       try {
         await authClient.$fetch(`${API_URL}/api/activities`, {
           method: "POST",
-          body: {
-            source: "mobile",
-            data: summary,
-          },
+          body: { source: "mobile", data: summary },
         })
-      } catch (postErr) {
-        console.warn("Failed to post mobile activity to server:", postErr)
+      } catch {
+        console.warn("Failed to post activity to server")
       }
 
       await clearActiveSession()
-
-      activeSessionRef.current = null
-      setPoints([])
-      setDistanceMeters(0)
-      setElapsedSeconds(0)
-      setCurrentSpeedMps(0)
-      setMaxSpeedMps(0)
-      setIsBackgroundActive(false)
+      sessionRef.current = null
+      setData(INITIAL_DATA)
 
       return summary
     } catch (err: any) {
       console.error("Stop activity error:", err)
-      setErrorMsg("Error stopping activity recording.")
+      setData((prev) => ({ ...prev, errorMsg: "Error stopping activity recording." }))
       return null
     }
   }
 
+  // ===========================================================================
+  // Public API
+  // ===========================================================================
   return {
-    status,
-    points,
-    distanceMeters,
-    elapsedSeconds,
-    currentSpeedMps,
-    maxSpeedMps,
-    isBackgroundActive,
-    errorMsg,
-    isNativeSupported,
+    status: data.status,
+    points: data.points,
+    distanceMeters: data.distanceMeters,
+    elapsedSeconds: data.elapsedSeconds,
+    currentSpeedMps: data.currentSpeedMps,
+    maxSpeedMps: data.maxSpeedMps,
+    isBackgroundActive: data.isBackgroundActive,
+    errorMsg: data.errorMsg,
+    isNativeSupported: isLocationAvailable,
     startRecording,
     pauseRecording,
     resumeRecording,
