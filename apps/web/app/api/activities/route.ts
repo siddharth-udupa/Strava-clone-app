@@ -7,7 +7,7 @@ import {
   normalizeGpxActivity,
   normalizeManualActivity,
   type NormalizedActivityData,
-} from "./normalization"
+} from "@/lib/normalization"
 
 export async function GET(req: NextRequest) {
   try {
