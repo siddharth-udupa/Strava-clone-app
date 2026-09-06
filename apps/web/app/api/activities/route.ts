@@ -11,6 +11,11 @@ import {
 
 export async function GET(req: NextRequest) {
   try {
+    const session = await auth.api.getSession({
+      headers: await headers()
+    })
+    if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
+
     const { searchParams } = req.nextUrl
     const userId: string | null = searchParams.get("userId")
     if (!userId) {

@@ -55,7 +55,7 @@ export const MobileActivitySchema = z.object({
 export const GpxActivitySchema = z.object({
   title: z.string().min(1).max(100),
   description: z.string().max(1000).optional().nullable(),
-  xmlContent: z.string().min(1, "GPX content cannot be empty"),
+  xmlContent: z.string().min(1, "GPX content cannot be empty").max(10_000_000, "GPX file is too large (max 10 MB)"),
   type: z.string().optional().default("Run"),
 })
 

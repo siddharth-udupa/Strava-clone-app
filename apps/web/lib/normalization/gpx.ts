@@ -5,11 +5,18 @@ import {
   douglasPeucker,
   encodePolyline,
   buildStreams,
+  verifyGpx,
 } from "@repo/gpx"
 import type { NormalizedActivityData } from "./index"
 
 export function normalizeGpxActivity(data: unknown): NormalizedActivityData {
   const parsed = GpxActivitySchema.parse(data)
+
+  const verification = verifyGpx(parsed.xmlContent)
+  if (!verification.ok) {
+    throw new Error(`Invalid GPX file: ${verification.reason}`)
+  }
+
   const rawPoints = parserGPX(parsed.xmlContent)
 
   if (rawPoints.length === 0) {
