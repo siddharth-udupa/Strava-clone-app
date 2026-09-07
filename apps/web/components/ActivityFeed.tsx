@@ -1,8 +1,9 @@
 "use client"
 
-import { useCallback, useEffect, useRef, useState } from "react"
+import { lazy, Suspense, useCallback, useEffect, useRef, useState } from "react"
 import type { ActivityCardType, PreferencesType } from "@repo/types"
-import ActivityCard from "./ActivityCard"
+
+const ActivityCard = lazy(() => import("./ActivityCard"))
 
 export default function ActivityFeed({ initialActivities, userPreferences, userId, userName }: {
   initialActivities: ActivityCardType[],
@@ -54,7 +55,9 @@ export default function ActivityFeed({ initialActivities, userPreferences, userI
   return (
     <div>
       {activities.map((a) => (
-        <ActivityCard key={a.activityId} activities={a} userPreferences={userPreferences} userName={userName} />
+        <Suspense key={a.activityId} fallback={<div className="mt-8 p-4 m-auto w-[90%] md:w-[60%] lg:w-[35%] bg-amber-200/50 rounded-md h-96 animate-pulse" />}>
+          <ActivityCard activities={a} userPreferences={userPreferences} userName={userName} />
+        </Suspense>
       ))}
 
       {/* The invisible div observer */}

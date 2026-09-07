@@ -1,23 +1,49 @@
 "use client"
 
+import { lazy, Suspense, useEffect, useRef, useState } from "react"
 import { ActivityCardType } from "@repo/types"
 import Image from "next/image"
-import Map from "./map/Map"
 import { PreferencesType } from "@repo/types"
 import { metersToDistance, metersToElevation, formatDateAndTime, formatDurationShort } from "@repo/units"
 import { useRouter } from "next/navigation"
 
+const Map = lazy(() => import("./map/Map"))
 
 type ActivityProp = {
   activities: ActivityCardType,
   userPreferences: PreferencesType,
-  userName: string
+  userName: string,
+  isVisible?: boolean
 }
 
 
-export default function ActivityCard({ activities, userPreferences, userName }: ActivityProp) {
+export default function ActivityCard({ activities, userPreferences, userName, isVisible: explicitIsVisible }: ActivityProp) {
 
   const router = useRouter()
+  const mapContainerRef = useRef<HTMLDivElement>(null)
+  const [internalIsVisible, setInternalIsVisible] = useState(false)
+
+  const isVisible = explicitIsVisible ?? internalIsVisible
+
+  useEffect(() => {
+    if (explicitIsVisible !== undefined) return
+
+    const el = mapContainerRef.current
+    if (!el) return
+
+    const observer = new IntersectionObserver(
+      ([entry]) => {
+        setInternalIsVisible(entry.isIntersecting)
+      },
+      { threshold: 0.1 }
+    )
+
+    observer.observe(el)
+
+    return () => {
+      observer.disconnect()
+    }
+  }, [explicitIsVisible])
 
   let elev = { name: "", value: 0 }
   if (activities.elevationGain > activities.elevationLoss) {
@@ -72,7 +98,7 @@ export default function ActivityCard({ activities, userPreferences, userName }: 
         {
           stats.map((s) => {
             return (
-              <div key={s.value}>
+              <div key={s.name}>
                 <p>{s.name}</p>
                 <h2 className="text-2xl font-semibold">{s.value}{s.unit.padStart(3)}</h2>
               </div>
@@ -84,9 +110,18 @@ export default function ActivityCard({ activities, userPreferences, userName }: 
 
 
       {activities.encodedPolyline ? (
-        <div className="mt-4 w-full h-80 bg-amber-50 rounded-md overflow-hidden  cursor-pointer"
-          onClick={clickHandler}>
-          <Map encodedPolyline={activities.encodedPolyline} isStatic={true} isChangeable={false} />
+        <div
+          ref={mapContainerRef}
+          className="mt-4 w-full h-80 bg-amber-50 rounded-md overflow-hidden cursor-pointer"
+          onClick={clickHandler}
+        >
+          {isVisible ? (
+            <Suspense fallback={<div className="h-full w-full bg-amber-100 animate-pulse rounded-md" />}>
+              <Map encodedPolyline={activities.encodedPolyline} isStatic={true} isChangeable={false} />
+            </Suspense>
+          ) : (
+            <div className="h-full w-full bg-amber-100/50 rounded-md" />
+          )}
         </div>
       ) : (
         <div className="my-8 flex items-center justify-center border border-gray-400/20">
