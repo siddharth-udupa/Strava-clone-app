@@ -50,6 +50,7 @@ export const activityStreams = pgTable("activity_streams", {
 
 export const userPreferences = pgTable("user_preferences", {
   userId: text("user_id").primaryKey().references(() => user.id, { onDelete: "cascade" }),
+  onBoarded: boolean("on_boarding").default(false),
   theme: theme("theme").default("system").notNull(),
   distanceUnit: distanceUnit("distance_unit").default("metric").notNull(),
   elevationUnit: elevationUnit("elevation_unit").default("meters").notNull(),

@@ -4,14 +4,23 @@ import { preferencesType, userPreferences } from "../schema"
 
 
 export async function createUserPreferences(userId: string) {
-  const [preferences] = await db 
+  const [inserted] = await db 
     .insert(userPreferences)
     .values({
       userId: userId,
     })
+    .onConflictDoNothing({ target: userPreferences.userId })
     .returning()
 
-  return preferences
+  if (inserted) return inserted
+
+  // Row already existed — fetch and return it
+  const [existing] = await db
+    .select()
+    .from(userPreferences)
+    .where(eq(userPreferences.userId, userId))
+
+  return existing
 }
 
 
