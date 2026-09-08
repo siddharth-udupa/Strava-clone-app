@@ -55,7 +55,7 @@ export default function ActivityFeed({ initialActivities, userPreferences, userI
   return (
     <div>
       {activities.map((a) => (
-        <Suspense key={a.activityId} fallback={<div className="mt-8 p-4 m-auto w-[90%] md:w-[60%] lg:w-[35%] bg-amber-200/50 rounded-md h-96 animate-pulse" />}>
+        <Suspense key={a.activityId} fallback={<div className="my-6 p-4 md:p-5 mx-auto w-full max-w-xl bg-gray-100/70 border border-gray-200 rounded-xl h-96 animate-pulse" />}>
           <ActivityCard activities={a} userPreferences={userPreferences} userName={userName} />
         </Suspense>
       ))}

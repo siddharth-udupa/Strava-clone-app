@@ -15,7 +15,7 @@ interface ActivityFeedProps {
   error?: string | null
 }
 
-const API_URL = process.env.EXPO_PUBLIC_API_URL ?? "http://192.168.31.240:3000"
+const API_URL = process.env.EXPO_PUBLIC_API_URL!
 
 export default function ActivityFeed({
   user,
@@ -31,6 +31,7 @@ export default function ActivityFeed({
   const [preferences, setPreference] = useState<PreferencesType>({
     updatedAt: null,
     userId: "",
+    onBoarded: true,
     theme: "light",
     distanceUnit: "metric",
     elevationUnit: "meters",

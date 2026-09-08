@@ -1,12 +1,12 @@
 "use client"
 
-import { useState } from "react"
+import { Suspense, useState } from "react"
 import { useRouter, useSearchParams } from "next/navigation"
 import { signIn, signUp } from "@/lib/auth-client"
 
 type Tab = "signin" | "signup"
 
-export default function AuthPage() {
+function AuthForm() {
   const [tab, setTab] = useState<Tab>("signin")
   const [form, setForm] = useState({ name: "", email: "", password: "" })
   const [error, setError] = useState("")
@@ -15,7 +15,6 @@ export default function AuthPage() {
   const searchParams = useSearchParams()
 
   const callbackUrl = searchParams.get("callbackUrl") ?? "/dashboard"
-
 
   const update = (field: string) =>
     (e: React.ChangeEvent<HTMLInputElement>) =>
@@ -198,5 +197,13 @@ export default function AuthPage() {
         </form>
       </div>
     </div>
+  )
+}
+
+export default function AuthPage() {
+  return (
+    <Suspense fallback={<div className="w-full my-8 flex justify-center text-sm text-gray-400">Loading auth form...</div>}>
+      <AuthForm />
+    </Suspense>
   )
 }
