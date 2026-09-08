@@ -198,11 +198,6 @@ export default function ActivityCard({
           className="relative my-4 w-full h-72 md:h-80 bg-gray-100 rounded-lg overflow-hidden border border-gray-200 cursor-pointer group"
           onClick={clickHandler}
         >
-          {/* Entire map hidden pill badge */}
-          <div className="absolute top-3 left-3 z-10 bg-white/90 backdrop-blur-xs px-2.5 py-1 rounded-md text-xs font-medium text-gray-700 shadow-xs border border-gray-200/60">
-            Entire map hidden
-          </div>
-
           {isVisible ? (
             <Suspense
               fallback={<div className="h-full w-full bg-gray-100 animate-pulse rounded-lg" />}

@@ -87,8 +87,8 @@ export default function Map({
   // Placeholder when native MapLibre module is unavailable (e.g. Expo Go standard client)
   if (!MapLibreModule || !MapLibreModule.Map) {
     return (
-      <View style={containerStyles} className="bg-slate-950 justify-center items-center relative overflow-hidden">
-        <View className="absolute inset-0 opacity-20 bg-slate-800" />
+      <View style={containerStyles} className="bg-gray-100 dark:bg-slate-950 justify-center items-center relative overflow-hidden flex-1 w-full h-full">
+        <View className="absolute inset-0 opacity-10 bg-gray-300 dark:bg-slate-800" />
         <View className="items-center justify-center p-4">
           <MaterialCommunityIcons
             name="map-marker-path"
@@ -96,13 +96,13 @@ export default function Map({
             color="#FC5200"
             opacity={0.8}
           />
-          <Text className="text-slate-400 text-xs font-semibold mt-1">
+          <Text className="text-gray-600 dark:text-slate-400 text-xs font-semibold mt-1">
             Map Route ({points.length} points)
           </Text>
-          <Text className="text-slate-500 text-[10px] mt-0.5 text-center">
+          <Text className="text-gray-500 dark:text-slate-500 text-[10px] mt-0.5 text-center">
             Native MapLibre requires Dev Build (`npx expo run:android`)
           </Text>
-          <Text className="text-slate-400 text-[11px] font-medium mt-2 bg-slate-900/80 px-2.5 py-1 rounded-md border border-slate-800">
+          <Text className="text-gray-600 dark:text-slate-400 text-[11px] font-medium mt-2 bg-white/80 dark:bg-slate-900/80 px-2.5 py-1 rounded-md border border-gray-200 dark:border-slate-800">
             Active Style: {activeProvider.name}
           </Text>
         </View>
@@ -113,7 +113,7 @@ export default function Map({
   const { Map: MapLibreView, Camera, GeoJSONSource, Layer } = MapLibreModule
 
   return (
-    <View style={containerStyles} className="bg-slate-950 overflow-hidden relative">
+    <View style={containerStyles} className="bg-gray-100 dark:bg-slate-950 overflow-hidden relative flex-1 w-full h-full">
       <MapLibreView
         style={mapStyles}
         mapStyle={mapStyle}
@@ -163,11 +163,12 @@ export default function Map({
 const styles = StyleSheet.create({
   container: {
     width: "100%",
-    height: 200,
+    height: "100%",
+    flex: 1,
   },
   map: {
     width: "100%",
-    height: 200,
+    height: "100%",
     flex: 1,
   },
 })

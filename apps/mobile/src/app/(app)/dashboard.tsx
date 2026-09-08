@@ -29,8 +29,8 @@ export default function DashboardScreen() {
   }
 
   return (
-    <View className="flex-1 bg-slate-950">
-      <StatusBar barStyle="light-content" backgroundColor="#0F172A" />
+    <View className="flex-1 bg-gray-100 dark:bg-slate-950">
+      <StatusBar barStyle="dark-content" backgroundColor="#FFFFFF" />
 
       {/* TOP NAV BAR */}
       <TopBar insets={insets} handleSignOut={handleSignOut} />
@@ -51,9 +51,11 @@ export default function DashboardScreen() {
       {activeTab === "maps" && (
         <Suspense
           fallback={
-            <View className="flex-1 justify-center items-center bg-slate-950">
+            <View className="flex-1 justify-center items-center bg-gray-100 dark:bg-slate-950">
               <ActivityIndicator size="large" color="#FC5200" />
-              <Text className="text-slate-400 text-xs mt-2 font-semibold">Loading Map Screen...</Text>
+              <Text className="text-gray-500 dark:text-slate-400 text-xs mt-2 font-semibold">
+                Loading Map Screen...
+              </Text>
             </View>
           }
         >
@@ -62,24 +64,33 @@ export default function DashboardScreen() {
       )}
 
       {activeTab !== "home" && activeTab !== "maps" && (
-        <View className="flex-1 justify-center items-center p-4">
+        <View className="flex-1 justify-center items-center p-4 bg-white dark:bg-slate-900">
           <Ionicons name="construct-outline" size={48} color="#FC5200" />
-          <Text className="text-white font-bold text-lg mt-2 capitalize">{activeTab} View</Text>
-          <Text className="text-slate-400 text-xs mt-1">This view is currently under development.</Text>
+          <Text className="text-gray-900 dark:text-white font-bold text-lg mt-2 capitalize">
+            {activeTab} View
+          </Text>
+          <Text className="text-gray-500 dark:text-slate-400 text-xs mt-1">
+            This view is currently under development.
+          </Text>
         </View>
       )}
 
       {/* BOTTOM TAB BAR */}
-      <BottomBar insets={insets} activeTab={activeTab} setActiveTab={setActiveTab} onRecordPress={() => router.push("/(app)/recorder/recorder" as any)} />
+      <BottomBar
+        insets={insets}
+        activeTab={activeTab}
+        setActiveTab={setActiveTab}
+        onRecordPress={() => router.push("/(app)/recorder/recorder" as any)}
+      />
     </View>
   )
 }
 
-function TopBar({ insets, handleSignOut}: { insets: EdgeInsets, handleSignOut: () => Promise<void>}) {
+function TopBar({ insets, handleSignOut }: { insets: EdgeInsets; handleSignOut: () => Promise<void> }) {
   return (
     <View
       style={{ paddingTop: Math.max(insets.top, 35) }}
-      className="bg-slate-900 border-b border-slate-800 px-4 pb-3"
+      className="bg-white dark:bg-slate-900 border-b border-gray-200 dark:border-slate-800 px-4 pb-3"
     >
       <View className="flex-row items-center justify-between">
         <Text className="text-[#FC5200] text-2xl font-black tracking-wider">
@@ -88,7 +99,7 @@ function TopBar({ insets, handleSignOut}: { insets: EdgeInsets, handleSignOut: (
         <View className="flex-row items-center space-x-3">
           <TouchableOpacity
             onPress={handleSignOut}
-            className="p-2 rounded-full bg-red-500/20 border border-red-500/40"
+            className="p-2 rounded-full bg-red-50 dark:bg-red-500/20 border border-red-200 dark:border-red-500/40"
           >
             <Ionicons name="log-out-outline" size={18} color="#EF4444" />
           </TouchableOpacity>
@@ -98,12 +109,21 @@ function TopBar({ insets, handleSignOut}: { insets: EdgeInsets, handleSignOut: (
   )
 }
 
-function BottomBar({ insets, activeTab, setActiveTab, onRecordPress }:
-  { insets: EdgeInsets, activeTab: ActiveTabType, setActiveTab: React.Dispatch<React.SetStateAction<ActiveTabType>>, onRecordPress: () => void }) {
+function BottomBar({
+  insets,
+  activeTab,
+  setActiveTab,
+  onRecordPress,
+}: {
+  insets: EdgeInsets
+  activeTab: ActiveTabType
+  setActiveTab: React.Dispatch<React.SetStateAction<ActiveTabType>>
+  onRecordPress: () => void
+}) {
   return (
     <View
       style={{ paddingBottom: Math.max(insets.bottom, 25) }}
-      className="absolute bottom-0 left-0 right-0 bg-slate-900 border-t border-slate-800 flex-row justify-around items-center pt-2 px-2"
+      className="absolute bottom-0 left-0 right-0 bg-white dark:bg-slate-900 border-t border-gray-200 dark:border-slate-800 flex-row justify-around items-center pt-2 px-2 shadow-lg"
     >
       <TouchableOpacity
         onPress={() => setActiveTab("home")}
@@ -112,11 +132,15 @@ function BottomBar({ insets, activeTab, setActiveTab, onRecordPress }:
         <Ionicons
           name={activeTab === "home" ? "home" : "home-outline"}
           size={22}
-          color={activeTab === "home" ? "#FC5200" : "#94A3B8"}
+          color={activeTab === "home" ? "#FC5200" : "#6B7280"}
         />
         <Text
-          className={`text-[10px] font-bold mt-1 ${activeTab === "home" ? "text-[#FC5200]" : "text-gray-400"
-            }`}>Home</Text>
+          className={`text-[10px] font-bold mt-1 ${
+            activeTab === "home" ? "text-[#FC5200]" : "text-gray-500 dark:text-gray-400"
+          }`}
+        >
+          Home
+        </Text>
       </TouchableOpacity>
 
       <TouchableOpacity
@@ -126,11 +150,15 @@ function BottomBar({ insets, activeTab, setActiveTab, onRecordPress }:
         <Ionicons
           name={activeTab === "maps" ? "map" : "map-outline"}
           size={22}
-          color={activeTab === "maps" ? "#FC5200" : "#94A3B8"}
+          color={activeTab === "maps" ? "#FC5200" : "#6B7280"}
         />
         <Text
-          className={`text-[10px] font-bold mt-1 ${activeTab === "maps" ? "text-[#FC5200]" : "text-gray-400"
-            }`}>Maps</Text>
+          className={`text-[10px] font-bold mt-1 ${
+            activeTab === "maps" ? "text-[#FC5200]" : "text-gray-500 dark:text-gray-400"
+          }`}
+        >
+          Maps
+        </Text>
       </TouchableOpacity>
 
       {/* Record CTA Center Button */}
@@ -138,10 +166,12 @@ function BottomBar({ insets, activeTab, setActiveTab, onRecordPress }:
         onPress={onRecordPress}
         className="items-center justify-center flex-1 -mt-4"
       >
-        <View className="w-13 h-13 rounded-full bg-[#FC5200] items-center justify-center shadow-lg shadow-[#FC5200]/50 border-4 border-slate-950 p-2">
+        <View className="w-13 h-13 rounded-full bg-[#FC5200] items-center justify-center shadow-lg shadow-[#FC5200]/40 border-4 border-gray-100 dark:border-slate-950 p-2">
           <Ionicons name="reload-circle-outline" size={26} color="#FFFFFF" />
         </View>
-        <Text className="text-[10px] font-bold text-gray-400 mt-0.5">Record</Text>
+        <Text className="text-[10px] font-bold text-gray-500 dark:text-gray-400 mt-0.5">
+          Record
+        </Text>
       </TouchableOpacity>
 
       <TouchableOpacity
@@ -151,11 +181,15 @@ function BottomBar({ insets, activeTab, setActiveTab, onRecordPress }:
         <Ionicons
           name={activeTab === "groups" ? "people" : "people-outline"}
           size={22}
-          color={activeTab === "groups" ? "#FC5200" : "#94A3B8"}
+          color={activeTab === "groups" ? "#FC5200" : "#6B7280"}
         />
         <Text
-          className={`text-[10px] font-bold mt-1 ${activeTab === "groups" ? "text-[#FC5200]" : "text-gray-400"
-            }`}>Groups</Text>
+          className={`text-[10px] font-bold mt-1 ${
+            activeTab === "groups" ? "text-[#FC5200]" : "text-gray-500 dark:text-gray-400"
+          }`}
+        >
+          Groups
+        </Text>
       </TouchableOpacity>
 
       <TouchableOpacity
@@ -165,11 +199,15 @@ function BottomBar({ insets, activeTab, setActiveTab, onRecordPress }:
         <Ionicons
           name={activeTab === "you" ? "person" : "person-outline"}
           size={22}
-          color={activeTab === "you" ? "#FC5200" : "#94A3B8"}
+          color={activeTab === "you" ? "#FC5200" : "#6B7280"}
         />
         <Text
-          className={`text-[10px] font-bold mt-1 ${activeTab === "you" ? "text-[#FC5200]" : "text-gray-400"
-            }`}>You</Text>
+          className={`text-[10px] font-bold mt-1 ${
+            activeTab === "you" ? "text-[#FC5200]" : "text-gray-500 dark:text-gray-400"
+          }`}
+        >
+          You
+        </Text>
       </TouchableOpacity>
     </View>
   )

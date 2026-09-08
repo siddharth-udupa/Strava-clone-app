@@ -157,21 +157,17 @@ export default function ActivtyCard({ activity, preferences, user }: ActivityCar
         </View>
       </View>
 
-      {/* Map Section — rendered if activity has encodedPolyline */}
+      {/* Real Map — rendered if activity has encodedPolyline */}
       {activity.encodedPolyline ? (
         <TouchableOpacity
           onPress={handlePressCard}
           activeOpacity={0.9}
-          className="relative my-3 rounded-lg overflow-hidden border border-gray-200 h-72 w-full bg-gray-100"
+          className="my-3 rounded-lg overflow-hidden border border-gray-200 h-72 w-full bg-gray-100"
         >
-          {/* Entire map hidden badge */}
-          <View className="absolute top-3 left-3 z-10 bg-white/90 px-2.5 py-1 rounded-md border border-gray-200/60 shadow-xs">
-            <Text className="text-xs font-medium text-gray-700">Entire map hidden</Text>
-          </View>
-
           <ActivityMap
             encodedPolyline={activity.encodedPolyline}
             isStatic={true}
+            style={{ width: "100%", height: "100%" }}
           />
         </TouchableOpacity>
       ) : null}

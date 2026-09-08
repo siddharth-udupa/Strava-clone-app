@@ -46,89 +46,74 @@ export default function RecorderScreen() {
   const formattedSpeed = mpsToSpeed(currentSpeedMps, "km/h")
 
   return (
-    <SafeAreaView style={{ flex: 1, backgroundColor: "#121212" }}>
-      <View style={{ flex: 1, padding: 16, justifyContent: "space-between" }}>
-        
+    <SafeAreaView className="flex-1 bg-gray-100 dark:bg-slate-950">
+      <View className="flex-1 p-4 justify-between">
         {/* Top Header & Type Switcher */}
-        <View style={{ marginTop: 12 }}>
-          <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between" }}>
+        <View className="mt-3">
+          <View className="flex-row items-center justify-between">
             <TouchableOpacity
               onPress={handleGoBack}
-              style={{
-                width: 40,
-                height: 40,
-                borderRadius: 20,
-                backgroundColor: "#1C1C1E",
-                justifyContent: "center",
-                alignItems: "center",
-              }}
+              className="w-10 h-10 rounded-full bg-white dark:bg-slate-800 border border-gray-200 dark:border-slate-700 justify-center items-center shadow-xs"
             >
-              <Ionicons name="arrow-back" size={20} color="#FFFFFF" />
+              <Ionicons name="arrow-back" size={20} color="#111827" />
             </TouchableOpacity>
 
-            <Text style={{ color: "#8E8E93", fontSize: 14, fontWeight: "600", textTransform: "uppercase" }}>
+            <Text className="text-gray-500 dark:text-slate-400 text-sm font-semibold uppercase">
               GPS Activity Recorder
             </Text>
 
-            <View style={{ width: 40 }} />
+            <View className="w-10" />
           </View>
-          
+
           {status === "idle" && (
-            <View style={{ flexDirection: "row", marginTop: 16, backgroundColor: "#1C1C1E", borderRadius: 8, padding: 4, alignSelf: "center" }}>
+            <View className="flex-row mt-4 bg-gray-200 dark:bg-slate-800 rounded-lg p-1 self-center w-48">
               <TouchableOpacity
                 onPress={() => setActivityType("run")}
-                style={{
-                  flex: 1,
-                  paddingVertical: 8,
-                  borderRadius: 6,
-                  alignItems: "center",
-                  backgroundColor: activityType === "run" ? "#FC5200" : "transparent",
-                }}
+                className={`flex-1 py-2 rounded-md items-center ${
+                  activityType === "run" ? "bg-[#FC5200]" : "bg-transparent"
+                }`}
               >
-                <Text style={{ color: "#FFF", fontWeight: "700" }}>Run</Text>
+                <Text
+                  className={`font-bold ${
+                    activityType === "run" ? "text-white" : "text-gray-700 dark:text-slate-300"
+                  }`}
+                >
+                  Run
+                </Text>
               </TouchableOpacity>
               <TouchableOpacity
                 onPress={() => setActivityType("ride")}
-                style={{
-                  flex: 1,
-                  paddingVertical: 8,
-                  borderRadius: 6,
-                  alignItems: "center",
-                  backgroundColor: activityType === "ride" ? "#FC5200" : "transparent",
-                }}
+                className={`flex-1 py-2 rounded-md items-center ${
+                  activityType === "ride" ? "bg-[#FC5200]" : "bg-transparent"
+                }`}
               >
-                <Text style={{ color: "#FFF", fontWeight: "700" }}>Ride</Text>
+                <Text
+                  className={`font-bold ${
+                    activityType === "ride" ? "text-white" : "text-gray-700 dark:text-slate-300"
+                  }`}
+                >
+                  Ride
+                </Text>
               </TouchableOpacity>
             </View>
           )}
 
           {status !== "idle" && (
-            <View style={{ flexDirection: "row", justifyContent: "center", marginTop: 12 }}>
+            <View className="flex-row justify-center mt-3">
               <View
-                style={{
-                  flexDirection: "row",
-                  alignItems: "center",
-                  backgroundColor: isBackgroundActive ? "#1C3829" : "#382D1C",
-                  paddingHorizontal: 12,
-                  paddingVertical: 4,
-                  borderRadius: 12,
-                  gap: 6,
-                }}
+                className={`flex-row items-center px-3 py-1 rounded-full gap-1.5 ${
+                  isBackgroundActive ? "bg-emerald-100 dark:bg-emerald-950/60 border border-emerald-300 dark:border-emerald-800" : "bg-amber-100 dark:bg-amber-950/60 border border-amber-300 dark:border-amber-800"
+                }`}
               >
                 <View
-                  style={{
-                    width: 8,
-                    height: 8,
-                    borderRadius: 4,
-                    backgroundColor: isBackgroundActive ? "#30D158" : "#FF9500",
-                  }}
+                  className={`w-2 h-2 rounded-full ${
+                    isBackgroundActive ? "bg-emerald-600" : "bg-amber-600"
+                  }`}
                 />
                 <Text
-                  style={{
-                    color: isBackgroundActive ? "#30D158" : "#FF9500",
-                    fontSize: 12,
-                    fontWeight: "600",
-                  }}
+                  className={`text-xs font-semibold ${
+                    isBackgroundActive ? "text-emerald-700 dark:text-emerald-400" : "text-amber-700 dark:text-amber-400"
+                  }`}
                 >
                   {isBackgroundActive ? "Background GPS Active (Priority 1)" : "Foreground GPS (Fallback)"}
                 </Text>
@@ -139,44 +124,44 @@ export default function RecorderScreen() {
 
         {/* Error Notification */}
         {errorMsg && (
-          <View style={{ backgroundColor: "#3A0D0D", padding: 12, borderRadius: 8, marginVertical: 8 }}>
-            <Text style={{ color: "#FF453A", textAlign: "center", fontWeight: "600" }}>{errorMsg}</Text>
+          <View className="bg-red-50 dark:bg-red-950/60 border border-red-200 dark:border-red-800 p-3 rounded-lg my-2">
+            <Text className="text-red-600 dark:text-red-400 text-center font-semibold">{errorMsg}</Text>
           </View>
         )}
 
         {/* Live Metrics Grid */}
-        <View style={{ backgroundColor: "#1C1C1E", borderRadius: 16, padding: 24 }}>
+        <View className="bg-white dark:bg-slate-900 border border-gray-200 dark:border-slate-800 rounded-2xl p-6 shadow-sm">
           {/* Main Distance Metric */}
-          <View style={{ alignItems: "center", marginBottom: 24 }}>
-            <Text style={{ color: "#8E8E93", fontSize: 14, fontWeight: "600", letterSpacing: 1 }}>
+          <View className="items-center mb-6">
+            <Text className="text-gray-500 dark:text-slate-400 text-xs font-semibold tracking-wider uppercase">
               DISTANCE (KM)
             </Text>
-            <Text style={{ color: "#FFFFFF", fontSize: 64, fontWeight: "800", marginTop: 4 }}>
+            <Text className="text-gray-900 dark:text-white text-6xl font-black mt-1">
               {formattedDistance}
             </Text>
           </View>
 
           {/* Secondary Stats Grid */}
-          <View style={{ flexDirection: "row", justifyContent: "space-around", borderTopWidth: 1, borderColor: "#2C2C2E", paddingTop: 16 }}>
-            <View style={{ alignItems: "center" }}>
-              <Text style={{ color: "#8E8E93", fontSize: 12, fontWeight: "600" }}>TIME</Text>
-              <Text style={{ color: "#FFF", fontSize: 24, fontWeight: "700", marginTop: 4 }}>
+          <View className="flex-row justify-around border-t border-gray-200 dark:border-slate-800 pt-4">
+            <View className="items-center">
+              <Text className="text-gray-500 dark:text-slate-400 text-xs font-semibold uppercase">TIME</Text>
+              <Text className="text-gray-900 dark:text-white text-2xl font-bold mt-1">
                 {formattedTime}
               </Text>
             </View>
 
-            <View style={{ alignItems: "center" }}>
-              <Text style={{ color: "#8E8E93", fontSize: 12, fontWeight: "600" }}>
+            <View className="items-center">
+              <Text className="text-gray-500 dark:text-slate-400 text-xs font-semibold uppercase">
                 {activityType === "run" ? "PACE" : "SPEED (KM/H)"}
               </Text>
-              <Text style={{ color: "#FFF", fontSize: 24, fontWeight: "700", marginTop: 4 }}>
+              <Text className="text-gray-900 dark:text-white text-2xl font-bold mt-1">
                 {activityType === "run" ? formattedPace : `${formattedSpeed}`}
               </Text>
             </View>
 
-            <View style={{ alignItems: "center" }}>
-              <Text style={{ color: "#8E8E93", fontSize: 12, fontWeight: "600" }}>GPS PTS</Text>
-              <Text style={{ color: "#FFF", fontSize: 24, fontWeight: "700", marginTop: 4 }}>
+            <View className="items-center">
+              <Text className="text-gray-500 dark:text-slate-400 text-xs font-semibold uppercase">GPS PTS</Text>
+              <Text className="text-gray-900 dark:text-white text-2xl font-bold mt-1">
                 {points.length}
               </Text>
             </View>
@@ -184,92 +169,54 @@ export default function RecorderScreen() {
         </View>
 
         {/* Action Controls */}
-        <View style={{ marginBottom: 20 }}>
+        <View className="mb-5">
           {status === "idle" && (
             <TouchableOpacity
               onPress={startRecording}
-              style={{
-                backgroundColor: "#FC5200",
-                height: 64,
-                borderRadius: 32,
-                justifyContent: "center",
-                alignItems: "center",
-                shadowColor: "#FC5200",
-                shadowOpacity: 0.4,
-                shadowRadius: 10,
-              }}
+              className="bg-[#FC5200] h-16 rounded-full justify-center items-center shadow-lg shadow-[#FC5200]/40"
             >
-              <Text style={{ color: "#FFF", fontSize: 20, fontWeight: "800", letterSpacing: 1 }}>
+              <Text className="text-white text-xl font-black tracking-wider">
                 START
               </Text>
             </TouchableOpacity>
           )}
 
           {status === "recording" && (
-            <View style={{ flexDirection: "row", gap: 12 }}>
+            <View className="flex-row gap-3">
               <TouchableOpacity
                 onPress={pauseRecording}
-                style={{
-                  flex: 1,
-                  backgroundColor: "#FF9500",
-                  height: 60,
-                  borderRadius: 30,
-                  justifyContent: "center",
-                  alignItems: "center",
-                }}
+                className="flex-1 bg-amber-500 h-14 rounded-full justify-center items-center"
               >
-                <Text style={{ color: "#FFF", fontSize: 18, fontWeight: "700" }}>PAUSE</Text>
+                <Text className="text-white text-lg font-bold">PAUSE</Text>
               </TouchableOpacity>
 
               <TouchableOpacity
                 onPress={handleFinish}
-                style={{
-                  flex: 1,
-                  backgroundColor: "#FF3B30",
-                  height: 60,
-                  borderRadius: 30,
-                  justifyContent: "center",
-                  alignItems: "center",
-                }}
+                className="flex-1 bg-red-600 h-14 rounded-full justify-center items-center"
               >
-                <Text style={{ color: "#FFF", fontSize: 18, fontWeight: "700" }}>FINISH</Text>
+                <Text className="text-white text-lg font-bold">FINISH</Text>
               </TouchableOpacity>
             </View>
           )}
 
           {status === "paused" && (
-            <View style={{ flexDirection: "row", gap: 12 }}>
+            <View className="flex-row gap-3">
               <TouchableOpacity
                 onPress={resumeRecording}
-                style={{
-                  flex: 1,
-                  backgroundColor: "#30D158",
-                  height: 60,
-                  borderRadius: 30,
-                  justifyContent: "center",
-                  alignItems: "center",
-                }}
+                className="flex-1 bg-emerald-600 h-14 rounded-full justify-center items-center"
               >
-                <Text style={{ color: "#FFF", fontSize: 18, fontWeight: "700" }}>RESUME</Text>
+                <Text className="text-white text-lg font-bold">RESUME</Text>
               </TouchableOpacity>
 
               <TouchableOpacity
                 onPress={handleFinish}
-                style={{
-                  flex: 1,
-                  backgroundColor: "#FF3B30",
-                  height: 60,
-                  borderRadius: 30,
-                  justifyContent: "center",
-                  alignItems: "center",
-                }}
+                className="flex-1 bg-red-600 h-14 rounded-full justify-center items-center"
               >
-                <Text style={{ color: "#FFF", fontSize: 18, fontWeight: "700" }}>FINISH</Text>
+                <Text className="text-white text-lg font-bold">FINISH</Text>
               </TouchableOpacity>
             </View>
           )}
         </View>
-
       </View>
     </SafeAreaView>
   )
