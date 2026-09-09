@@ -1,21 +1,23 @@
 "use client"
 
 import { useState } from "react"
+import { useRouter } from "next/navigation"
+import { AlertCircle, CheckCircle2, Loader2 } from "lucide-react"
 
 const SPORTS = [
   "Run", "Ride", "Swim", "Walk", "Hike", "Other"
 ]
 
-// const TAGS = ["Race", "Workout", "Long Run", "Commute", "For a Cause", "Recovery", "With Kid", "With Pet", "Treadmill"]
-
 export default function Manual() {
+  const router = useRouter()
+
   const nowLocal = new Date()
   nowLocal.setMinutes(nowLocal.getMinutes() - nowLocal.getTimezoneOffset())
   const defaultDateTime = nowLocal.toISOString().slice(0, 16)
 
   const [data, setData] = useState({
     distance: 0,
-    duration: { hr: 1, min: 0, sec: 0 },
+    duration: { hr: 0, min: 30, sec: 0 },
     elevationGain: 0,
     elevationLoss: 0,
     type: "Run",
@@ -24,9 +26,6 @@ export default function Manual() {
     title: "",
     description: "",
   })
-
-
-  // const [selectedTags, setSelectedTags] = useState<string[]>([])
 
   const [metaData, setMetaData] = useState<{
     distanceUnit: "metric" | "imperial"
@@ -38,6 +37,20 @@ export default function Manual() {
     elevUnitLoss: "meters",
   })
 
+  const [isSubmitting, setIsSubmitting] = useState(false)
+  const [feedback, setFeedback] = useState<{
+    type: "success" | "error"
+    message: string
+  } | null>(null)
+
+  // Validation: Title must not be empty, Distance must be > 0, and Duration must be > 0
+  const isTitleValid = data.title.trim().length > 0
+  const isDistanceValid = typeof data.distance === "number" && data.distance > 0
+  const isDurationValid =
+    (data.duration.hr || 0) * 3600 + (data.duration.min || 0) * 60 + (data.duration.sec || 0) > 0
+
+  const isFormValid = isTitleValid && isDistanceValid && isDurationValid
+
   const updateField = (field: string, value: unknown) =>
     setData(prev => ({ ...prev, [field]: value }))
 
@@ -47,12 +60,60 @@ export default function Manual() {
   const updateDuration = (key: "hr" | "min" | "sec", value: number) =>
     setData(prev => ({ ...prev, duration: { ...prev.duration, [key]: value } }))
 
-  // const toggleTag = (tag: string) =>
-  //   setSelectedTags(prev =>
-  //     prev.includes(tag) ? prev.filter(t => t !== tag) : [...prev, tag]
-  //   )
+  // Format Zod & backend errors into clean human-readable text
+  const formatErrorMessage = (resData: any): string => {
+    if (!resData) return "An unexpected error occurred while saving."
 
-  const submitHandler = async () => {
+    if (resData.detailedError) {
+      const errs = resData.detailedError
+      if (typeof errs === "string") return errs
+
+      if (Array.isArray(errs)) {
+        const messages = errs.map((e: any) => {
+          const fieldName =
+            Array.isArray(e.path) && e.path.length > 0
+              ? e.path
+                  .map((p: any) => String(p).charAt(0).toUpperCase() + String(p).slice(1))
+                  .join(" > ")
+              : ""
+
+          let msg = e.message || "Invalid value"
+          if (e.code === "too_small") {
+            msg = e.minimum ? `must be at least ${e.minimum} character(s)` : "is required"
+          } else if (e.code === "too_big") {
+            msg = `must be at most ${e.maximum} character(s)`
+          } else if (e.code === "invalid_type") {
+            msg = "is invalid"
+          }
+
+          return fieldName ? `${fieldName} ${msg}` : msg
+        })
+        return messages.join(". ")
+      }
+    }
+
+    if (resData.error) {
+      if (typeof resData.error === "string") return resData.error
+      return "Validation failed on the server."
+    }
+
+    return "Failed to save activity."
+  }
+
+  const submitHandler = async (e: React.FormEvent) => {
+    e.preventDefault()
+
+    if (!isFormValid) {
+      setFeedback({
+        type: "error",
+        message: "Please fill in all required fields (Title, Distance, and Duration)."
+      })
+      return
+    }
+
+    setIsSubmitting(true)
+    setFeedback(null)
+
     try {
       const res = await fetch("/api/activities", {
         method: "POST",
@@ -68,40 +129,83 @@ export default function Manual() {
         })
       })
 
-      const resData = await res.json()
-      console.log(resData)
-    }
-    catch (err) {
-      console.log(err)
+      const resData = await res.json().catch(() => null)
+
+      if (res.ok) {
+        setFeedback({
+          type: "success",
+          message: "Activity saved successfully! Redirecting to dashboard..."
+        })
+        setTimeout(() => {
+          router.push("/dashboard")
+        }, 1200)
+      } else {
+        setFeedback({
+          type: "error",
+          message: formatErrorMessage(resData)
+        })
+      }
+    } catch (err: any) {
+      console.error(err)
+      setFeedback({
+        type: "error",
+        message: "Network error occurred. Please check your connection to the server."
+      })
+    } finally {
+      setIsSubmitting(false)
     }
   }
 
   return (
-    <div className="w-full max-w-4xl px-4 py-6">
+    <div className="w-full max-w-4xl">
       <h1 className="text-4xl font-bold text-gray-900 mb-6">Manual Entry</h1>
 
-      <form action={submitHandler} autoComplete="off" className="space-y-0">
+      {feedback && (
+        <div
+          className={`mb-6 p-4 rounded-lg flex items-start gap-3 border text-sm font-medium ${
+            feedback.type === "success"
+              ? "bg-green-50 text-green-800 border-green-200"
+              : "bg-red-50 text-red-800 border-red-200"
+          }`}
+        >
+          {feedback.type === "success" ? (
+            <CheckCircle2 className="w-5 h-5 text-green-600 shrink-0 mt-0.5" />
+          ) : (
+            <AlertCircle className="w-5 h-5 text-red-600 shrink-0 mt-0.5" />
+          )}
+          <span>{feedback.message}</span>
+        </div>
+      )}
 
-        {/* Row 1: Distance, Duration */}
+      <form onSubmit={submitHandler} autoComplete="off" className="space-y-0">
+
+        {/* Row 1: Distance, Duration, Elevation */}
         <div className="flex flex-wrap gap-8 pb-6 border-b border-gray-200">
 
           {/* Distance */}
           <div className="flex flex-col gap-1.5">
-            <label className="text-xs text-gray-600">Distance</label>
-            <div className="flex items-center border border-gray-300 rounded bg-white overflow-hidden h-9">
+            <label htmlFor="distance" className="text-xs font-medium text-gray-700">
+              Distance <span className="text-red-500">*</span>
+            </label>
+            <div className={`flex items-center border rounded bg-white overflow-hidden h-9 ${
+              !isDistanceValid && data.distance === 0 ? "border-gray-300" : "border-gray-300"
+            }`}>
               <input
                 id="distance"
                 type="number"
                 min={0}
+                step="any"
+                placeholder="0"
                 value={data.distance || ""}
-                onChange={e => updateField("distance", parseFloat(e.target.value))}
-                className="w-24 px-2 h-full text-sm outline-none text-right [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
+                onChange={e => updateField("distance", parseFloat(e.target.value) || 0)}
+                className="w-24 px-2 h-full text-sm outline-none text-right [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none text-gray-900"
               />
               <div className="h-full w-px bg-gray-200" />
               <select
+                aria-label="Distance unit"
                 value={metaData.distanceUnit}
                 onChange={e => updateMetaData("distanceUnit", e.target.value)}
-                className="h-full px-2 pr-1 text-sm bg-white outline-none cursor-pointer"
+                className="h-full px-2 pr-1 text-sm bg-white outline-none cursor-pointer text-gray-700"
               >
                 <option value="metric">kilometers</option>
                 <option value="imperial">miles</option>
@@ -111,7 +215,9 @@ export default function Manual() {
 
           {/* Duration */}
           <div className="flex flex-col gap-1.5">
-            <label className="text-xs text-gray-600">Duration</label>
+            <label htmlFor="duration-hr" className="text-xs font-medium text-gray-700">
+              Duration <span className="text-red-500">*</span>
+            </label>
             <div className="flex items-center border border-gray-300 rounded bg-white overflow-hidden h-9">
               <input
                 id="duration-hr"
@@ -119,7 +225,7 @@ export default function Manual() {
                 min={0}
                 value={data.duration.hr}
                 onChange={e => updateDuration("hr", parseInt(e.target.value) || 0)}
-                className="w-10 px-1 h-full text-sm outline-none text-center [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
+                className="w-10 px-1 h-full text-sm outline-none text-center [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none text-gray-900"
               />
               <span className="text-xs text-gray-400 pr-2">hr</span>
               <div className="h-full w-px bg-gray-200" />
@@ -130,7 +236,7 @@ export default function Manual() {
                 max={59}
                 value={data.duration.min}
                 onChange={e => updateDuration("min", parseInt(e.target.value) || 0)}
-                className="w-10 px-1 h-full text-sm outline-none text-center [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
+                className="w-10 px-1 h-full text-sm outline-none text-center [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none text-gray-900"
               />
               <span className="text-xs text-gray-400 pr-2">min</span>
               <div className="h-full w-px bg-gray-200" />
@@ -141,28 +247,30 @@ export default function Manual() {
                 max={59}
                 value={data.duration.sec}
                 onChange={e => updateDuration("sec", parseInt(e.target.value) || 0)}
-                className="w-10 px-1 h-full text-sm outline-none text-center [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
+                className="w-10 px-1 h-full text-sm outline-none text-center [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none text-gray-900"
               />
             </div>
           </div>
 
           {/* Elevation Gain */}
           <div className="flex flex-col gap-1.5">
-            <label className="text-xs text-gray-600">Elev Gain</label>
+            <label htmlFor="elevationGain" className="text-xs text-gray-600">Elev Gain</label>
             <div className="flex items-center border border-gray-300 rounded bg-white overflow-hidden h-9">
               <input
                 id="elevationGain"
                 type="number"
                 min={0}
+                step="any"
                 value={data.elevationGain || ""}
-                onChange={e => updateField("elevationGain", parseFloat(e.target.value))}
-                className="w-20 px-2 h-full text-sm outline-none text-right [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
+                onChange={e => updateField("elevationGain", parseFloat(e.target.value) || 0)}
+                className="w-20 px-2 h-full text-sm outline-none text-right [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none text-gray-900"
               />
               <div className="h-full w-px bg-gray-200" />
               <select
+                aria-label="Elevation gain unit"
                 value={metaData.elevUnitGain}
                 onChange={e => updateMetaData("elevUnitGain", e.target.value)}
-                className="h-full px-2 pr-1 text-sm bg-white outline-none cursor-pointer"
+                className="h-full px-2 pr-1 text-sm bg-white outline-none cursor-pointer text-gray-700"
               >
                 <option value="meters">meters</option>
                 <option value="feet">feet</option>
@@ -172,21 +280,23 @@ export default function Manual() {
 
           {/* Elevation Loss */}
           <div className="flex flex-col gap-1.5">
-            <label className="text-xs text-gray-600">Elev Loss</label>
+            <label htmlFor="elevationLoss" className="text-xs text-gray-600">Elev Loss</label>
             <div className="flex items-center border border-gray-300 rounded bg-white overflow-hidden h-9">
               <input
                 id="elevationLoss"
                 type="number"
                 min={0}
+                step="any"
                 value={data.elevationLoss || ""}
-                onChange={e => updateField("elevationLoss", parseFloat(e.target.value))}
-                className="w-20 px-2 h-full text-sm outline-none text-right [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
+                onChange={e => updateField("elevationLoss", parseFloat(e.target.value) || 0)}
+                className="w-20 px-2 h-full text-sm outline-none text-right [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none text-gray-900"
               />
               <div className="h-full w-px bg-gray-200" />
               <select
+                aria-label="Elevation loss unit"
                 value={metaData.elevUnitLoss}
                 onChange={e => updateMetaData("elevUnitLoss", e.target.value)}
-                className="h-full px-2 pr-1 text-sm bg-white outline-none cursor-pointer"
+                className="h-full px-2 pr-1 text-sm bg-white outline-none cursor-pointer text-gray-700"
               >
                 <option value="meters">meters</option>
                 <option value="feet">feet</option>
@@ -200,13 +310,13 @@ export default function Manual() {
 
           {/* Sport */}
           <div className="flex flex-col gap-1.5">
-            <label className="text-xs text-gray-600">Sport</label>
+            <label htmlFor="sport" className="text-xs font-medium text-gray-700">Sport</label>
             <div className="flex items-center border border-gray-300 rounded bg-white overflow-hidden h-9">
               <select
                 id="sport"
                 value={data.type}
                 onChange={e => updateField("type", e.target.value)}
-                className="h-full px-3 pr-8 text-sm bg-white outline-none cursor-pointer min-w-40"
+                className="h-full px-3 pr-8 text-sm bg-white outline-none cursor-pointer min-w-40 text-gray-900"
               >
                 {SPORTS.map(sport => (
                   <option key={sport} value={sport}>{sport}</option>
@@ -217,28 +327,28 @@ export default function Manual() {
 
           {/* Start Time */}
           <div className="flex flex-col gap-1.5">
-            <label className="text-xs text-gray-600">Start Time</label>
+            <label htmlFor="startTime" className="text-xs font-medium text-gray-700">Start Time</label>
             <div className="flex items-center border border-gray-300 rounded bg-white overflow-hidden h-9">
               <input
                 id="startTime"
                 type="datetime-local"
                 value={data.startTime}
                 onChange={e => updateField("startTime", e.target.value)}
-                className="h-full px-2 text-sm bg-white outline-none cursor-pointer"
+                className="h-full px-2 text-sm bg-white outline-none cursor-pointer text-gray-900"
               />
             </div>
           </div>
 
           {/* End Time */}
           <div className="flex flex-col gap-1.5">
-            <label className="text-xs text-gray-600">End Time</label>
+            <label htmlFor="endTime" className="text-xs text-gray-600">End Time</label>
             <div className="flex items-center border border-gray-300 rounded bg-white overflow-hidden h-9">
               <input
                 id="endTime"
                 type="datetime-local"
                 value={data.endTime}
                 onChange={e => updateField("endTime", e.target.value)}
-                className="h-full px-2 text-sm bg-white outline-none cursor-pointer"
+                className="h-full px-2 text-sm bg-white outline-none cursor-pointer text-gray-900"
               />
             </div>
           </div>
@@ -246,14 +356,16 @@ export default function Manual() {
 
         {/* Title */}
         <div className="flex flex-col gap-1.5 py-6">
-          <label htmlFor="title" className="text-xs text-gray-600">Title</label>
+          <label htmlFor="title" className="text-xs font-medium text-gray-700">
+            Title <span className="text-red-500">*</span>
+          </label>
           <input
             id="title"
             type="text"
-            placeholder="Lunch Run"
+            placeholder="e.g. Morning Run"
             value={data.title}
             onChange={e => updateField("title", e.target.value)}
-            className="w-96 h-9 px-3 text-sm border border-gray-300 rounded bg-white outline-none focus:border-blue-400 placeholder:text-gray-400"
+            className="w-full max-w-md h-9 px-3 text-sm border border-gray-300 rounded bg-white outline-none focus:border-stravaorange text-gray-900 placeholder:text-gray-400"
           />
         </div>
 
@@ -262,47 +374,40 @@ export default function Manual() {
           <label htmlFor="description" className="text-xs text-gray-600">Description</label>
           <textarea
             id="description"
-            placeholder="How'd it go? Share more about your activity and use @ to tag someone."
+            placeholder="How'd it go? Share more about your activity..."
             value={data.description}
             onChange={e => updateField("description", e.target.value)}
             rows={5}
-            className="w-96 px-3 py-2 text-sm border border-gray-300 rounded bg-white outline-none focus:border-blue-400 placeholder:text-gray-400 resize-y"
+            className="w-full max-w-md px-3 py-2 text-sm border border-gray-300 rounded bg-white outline-none focus:border-stravaorange text-gray-900 placeholder:text-gray-400 resize-y"
           />
         </div>
 
-        {/* Tags */}
-        {/* <div className="flex flex-col gap-2 pt-6">
-          <label className="text-xs text-gray-600">Tags</label>
-          <div className="flex flex-wrap gap-2">
-            {TAGS.map(tag => (
-              <button
-                key={tag}
-                type="button"
-                onClick={() => toggleTag(tag)}
-                className={`flex items-center gap-1.5 px-3 py-1 text-sm rounded-full border transition-colors cursor-pointer
-                  ${selectedTags.includes(tag)
-                    ? "border-orange-500 text-orange-600 bg-orange-50"
-                    : "border-gray-300 text-gray-700 bg-white hover:border-gray-400"
-                  }`}
-              >
-                <span className={`w-2 h-2 rounded-full border ${selectedTags.includes(tag) ? "border-orange-500 bg-orange-500" : "border-gray-400"}`} />
-                {tag}
-              </button>
-            ))}
-          </div>
-        </div> */}
-
         {/* Submit button */}
-        <div className="pt-6">
+        <div className="pt-6 flex items-center gap-4">
           <button
             type="submit"
-            className="px-8 py-2.5 bg-stravaorange text-white text-sm font-semibold rounded-md
-              hover:brightness-90 active:scale-[0.97] transition-all duration-150
-              focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-stravaorange focus-visible:ring-offset-2
-              cursor-pointer"
+            disabled={!isFormValid || isSubmitting}
+            className={`px-8 py-2.5 text-sm font-semibold rounded-md transition-all duration-150 flex items-center gap-2 ${
+              isFormValid && !isSubmitting
+                ? "bg-stravaorange text-white hover:brightness-90 active:scale-[0.97] cursor-pointer shadow-xs"
+                : "bg-gray-200 text-gray-400 border border-gray-300 cursor-not-allowed select-none opacity-80"
+            }`}
           >
-            Save Activity
+            {isSubmitting ? (
+              <>
+                <Loader2 className="w-4 h-4 animate-spin" />
+                <span>Saving...</span>
+              </>
+            ) : (
+              <span>Save Activity</span>
+            )}
           </button>
+
+          {!isFormValid && (
+            <span className="text-xs text-gray-500 italic">
+              Please enter a title, distance, and duration to save.
+            </span>
+          )}
         </div>
       </form>
     </div>
