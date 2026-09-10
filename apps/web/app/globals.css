@@ -1,31 +1,8 @@
 @import "tailwindcss";
-@import "leaflet/dist/leaflet.css";
+@import "maplibre-gl/dist/maplibre-gl.css";
 
 @theme {
   --color-stravaorange: #FC5200;
-}
-
-/* ── Leaflet + Tailwind v4 fix ──────────────────────────────
-   Tailwind v4's preflight applies:
-     img { max-width: 100%; height: auto; display: block; }
-   Leaflet tiles are <img> elements with exact pixel sizes and
-   absolute positioning. The preflight overrides break the tile
-   grid, making the map appear blank.
-   This restores Leaflet's expected behavior. */
-.leaflet-container img,
-.leaflet-container .leaflet-tile,
-.leaflet-container .leaflet-marker-icon,
-.leaflet-container .leaflet-marker-shadow,
-.leaflet-container .leaflet-image-layer {
-  max-width: none !important;
-  width: auto !important;
-  height: auto !important;
-  display: block;
-}
-
-.leaflet-container .leaflet-tile {
-  width: 256px !important;
-  height: 256px !important;
 }
 
 .static-map-container {

@@ -100,7 +100,7 @@ export default function Manual() {
     return "Failed to save activity."
   }
 
-  const submitHandler = async (e: React.FormEvent) => {
+  const submitHandler = async (e: React.SubmitEvent) => {
     e.preventDefault()
 
     if (!isFormValid) {

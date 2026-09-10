@@ -71,7 +71,7 @@ export default function GPXUploadPage() {
     return "Failed to upload GPX activity."
   }
 
-  const handleUpload = async (e: React.FormEvent) => {
+  const handleUpload = async (e: React.SubmitEvent) => {
     e.preventDefault()
 
     if (!file) {
