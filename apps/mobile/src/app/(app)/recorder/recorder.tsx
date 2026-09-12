@@ -1,14 +1,32 @@
 import { useState } from "react"
-import { View, Text, TouchableOpacity, Alert } from "react-native"
-import { SafeAreaView } from "react-native-safe-area-context"
+import { View, Text, TouchableOpacity, Alert, Modal, ScrollView } from "react-native"
+import { useSafeAreaInsets } from "react-native-safe-area-context"
 import { useRouter } from "expo-router"
 import { Ionicons } from "@expo/vector-icons"
 import { metersToDistance, formatDurationShort, formatPace, mpsToSpeed } from "@repo/units"
 import { useActivityRecorder } from "@/hooks/useActivityRecorder"
+import Map from "@/components/map/Map"
+import { tileProviders, DEFAULT_TILE_PROVIDER, type TileProviderId } from "@repo/maps"
+
+import FloatingMapControls from "@/components/ui/recorder/FloatingMapControls"
+import LiveMetricsCard from "@/components/ui/recorder/LiveMetricsCard"
+import BottomControlPanel, { type ActivityTypeOption } from "@/components/ui/recorder/BottomControlPanel"
+import ActivityTypeModal from "@/components/ui/recorder/ActivityTypeModal"
+import RouteSelectionModal from "@/components/ui/recorder/RouteSelectionModal"
 
 export default function RecorderScreen() {
   const router = useRouter()
-  const [activityType, setActivityType] = useState<"run" | "ride">("run")
+  const insets = useSafeAreaInsets()
+
+  const [activityType, setActivityType] = useState<ActivityTypeOption>("run")
+  const [providerId, setProviderId] = useState<TileProviderId>(DEFAULT_TILE_PROVIDER)
+  const [is3dMode, setIs3dMode] = useState(false)
+  const [isLayerPickerOpen, setIsLayerPickerOpen] = useState(false)
+  const [isActivityTypeModalOpen, setIsActivityTypeModalOpen] = useState(false)
+  const [isAddRouteModalOpen, setIsAddRouteModalOpen] = useState(false)
+  const [selectedRoute, setSelectedRoute] = useState<string | null>(null)
+
+  const recorderType = activityType === "ride" ? "ride" : "run"
   const {
     status,
     points,
@@ -21,7 +39,7 @@ export default function RecorderScreen() {
     pauseRecording,
     resumeRecording,
     stopAndSaveRecording,
-  } = useActivityRecorder(activityType)
+  } = useActivityRecorder(recorderType)
 
   const handleGoBack = () => {
     if (router.canGoBack()) {
@@ -35,9 +53,13 @@ export default function RecorderScreen() {
     const saved = await stopAndSaveRecording()
     if (saved) {
       const distKm = metersToDistance(saved.distanceMeters, "metric")
-      Alert.alert("Activity Saved!", `Total distance: ${distKm} km`)
+      Alert.alert("Activity Saved!", `Total distance: ${distKm.toFixed(2)} km`)
       handleGoBack()
     }
+  }
+
+  const handleRecenterLocation = () => {
+    Alert.alert("Location", "Map view centered on current position.")
   }
 
   const formattedDistance = metersToDistance(distanceMeters, "metric").toFixed(2)
@@ -46,178 +68,147 @@ export default function RecorderScreen() {
   const formattedSpeed = mpsToSpeed(currentSpeedMps, "km/h")
 
   return (
-    <SafeAreaView className="flex-1 bg-gray-100 dark:bg-slate-950">
-      <View className="flex-1 p-4 justify-between">
-        {/* Top Header & Type Switcher */}
-        <View className="mt-3">
-          <View className="flex-row items-center justify-between">
-            <TouchableOpacity
-              onPress={handleGoBack}
-              className="w-10 h-10 rounded-full bg-white dark:bg-slate-800 border border-gray-200 dark:border-slate-700 justify-center items-center shadow-xs"
-            >
-              <Ionicons name="arrow-back" size={20} color="#111827" />
-            </TouchableOpacity>
+    <View className="flex-1 bg-slate-900 relative">
+      {/* Fullscreen Map Background */}
+      <View className="absolute inset-0">
+        <Map providerId={providerId} isStatic={false} />
+      </View>
 
-            <Text className="text-gray-500 dark:text-slate-400 text-sm font-semibold uppercase">
-              GPS Activity Recorder
-            </Text>
+      {/* Top Left Back Button (Floating circular chevron down) */}
+      <TouchableOpacity
+        onPress={handleGoBack}
+        style={{ top: Math.max(insets.top + 8, 16) }}
+        className="absolute left-4 z-30 w-11 h-11 rounded-full bg-white dark:bg-slate-900 border border-gray-200 dark:border-slate-800 justify-center items-center shadow-lg active:scale-95"
+        accessibilityLabel="Go back"
+      >
+        <Ionicons name="chevron-down" size={24} color="#111827" />
+      </TouchableOpacity>
 
-            <View className="w-10" />
-          </View>
+      {/* Bottom Overlay Container */}
+      <View className="absolute bottom-0 left-0 right-0 z-20 justify-end">
+        {/* Floating Map Action Buttons (Stack above Metrics Card) */}
+        <FloatingMapControls
+          is3dMode={is3dMode}
+          onOpenLayerPicker={() => setIsLayerPickerOpen(true)}
+          onToggle3dMode={() => setIs3dMode((prev) => !prev)}
+          onRecenterLocation={handleRecenterLocation}
+          onOpenInfo={() =>
+            Alert.alert(
+              "Map Info",
+              `Active Style: ${tileProviders[providerId]?.name || providerId}`
+            )
+          }
+        />
 
-          {status === "idle" && (
-            <View className="flex-row mt-4 bg-gray-200 dark:bg-slate-800 rounded-lg p-1 self-center w-48">
-              <TouchableOpacity
-                onPress={() => setActivityType("run")}
-                className={`flex-1 py-2 rounded-md items-center ${
-                  activityType === "run" ? "bg-[#FC5200]" : "bg-transparent"
-                }`}
-              >
-                <Text
-                  className={`font-bold ${
-                    activityType === "run" ? "text-white" : "text-gray-700 dark:text-slate-300"
-                  }`}
-                >
-                  Run
-                </Text>
-              </TouchableOpacity>
-              <TouchableOpacity
-                onPress={() => setActivityType("ride")}
-                className={`flex-1 py-2 rounded-md items-center ${
-                  activityType === "ride" ? "bg-[#FC5200]" : "bg-transparent"
-                }`}
-              >
-                <Text
-                  className={`font-bold ${
-                    activityType === "ride" ? "text-white" : "text-gray-700 dark:text-slate-300"
-                  }`}
-                >
-                  Ride
-                </Text>
-              </TouchableOpacity>
-            </View>
-          )}
-
-          {status !== "idle" && (
-            <View className="flex-row justify-center mt-3">
-              <View
-                className={`flex-row items-center px-3 py-1 rounded-full gap-1.5 ${
-                  isBackgroundActive ? "bg-emerald-100 dark:bg-emerald-950/60 border border-emerald-300 dark:border-emerald-800" : "bg-amber-100 dark:bg-amber-950/60 border border-amber-300 dark:border-amber-800"
-                }`}
-              >
-                <View
-                  className={`w-2 h-2 rounded-full ${
-                    isBackgroundActive ? "bg-emerald-600" : "bg-amber-600"
-                  }`}
-                />
-                <Text
-                  className={`text-xs font-semibold ${
-                    isBackgroundActive ? "text-emerald-700 dark:text-emerald-400" : "text-amber-700 dark:text-amber-400"
-                  }`}
-                >
-                  {isBackgroundActive ? "Background GPS Active (Priority 1)" : "Foreground GPS (Fallback)"}
-                </Text>
-              </View>
-            </View>
-          )}
-        </View>
-
-        {/* Error Notification */}
+        {/* Error Notification Banner */}
         {errorMsg && (
-          <View className="bg-red-50 dark:bg-red-950/60 border border-red-200 dark:border-red-800 p-3 rounded-lg my-2">
-            <Text className="text-red-600 dark:text-red-400 text-center font-semibold">{errorMsg}</Text>
+          <View className="mx-4 mb-2 bg-red-500/90 px-4 py-2.5 rounded-xl border border-red-400">
+            <Text className="text-white text-xs font-bold text-center">{errorMsg}</Text>
           </View>
         )}
 
-        {/* Live Metrics Grid */}
-        <View className="bg-white dark:bg-slate-900 border border-gray-200 dark:border-slate-800 rounded-2xl p-6 shadow-sm">
-          {/* Main Distance Metric */}
-          <View className="items-center mb-6">
-            <Text className="text-gray-500 dark:text-slate-400 text-xs font-semibold tracking-wider uppercase">
-              DISTANCE (KM)
-            </Text>
-            <Text className="text-gray-900 dark:text-white text-6xl font-black mt-1">
-              {formattedDistance}
-            </Text>
-          </View>
+        {/* Live Activity Metrics Card */}
+        <LiveMetricsCard
+          formattedTime={formattedTime}
+          formattedPace={formattedPace}
+          formattedSpeed={formattedSpeed}
+          formattedDistance={formattedDistance}
+          activityType={activityType}
+          status={status}
+          pointsCount={points.length}
+          distanceMeters={distanceMeters}
+          isBackgroundActive={isBackgroundActive}
+        />
 
-          {/* Secondary Stats Grid */}
-          <View className="flex-row justify-around border-t border-gray-200 dark:border-slate-800 pt-4">
-            <View className="items-center">
-              <Text className="text-gray-500 dark:text-slate-400 text-xs font-semibold uppercase">TIME</Text>
-              <Text className="text-gray-900 dark:text-white text-2xl font-bold mt-1">
-                {formattedTime}
-              </Text>
-            </View>
-
-            <View className="items-center">
-              <Text className="text-gray-500 dark:text-slate-400 text-xs font-semibold uppercase">
-                {activityType === "run" ? "PACE" : "SPEED (KM/H)"}
-              </Text>
-              <Text className="text-gray-900 dark:text-white text-2xl font-bold mt-1">
-                {activityType === "run" ? formattedPace : `${formattedSpeed}`}
-              </Text>
-            </View>
-
-            <View className="items-center">
-              <Text className="text-gray-500 dark:text-slate-400 text-xs font-semibold uppercase">GPS PTS</Text>
-              <Text className="text-gray-900 dark:text-white text-2xl font-bold mt-1">
-                {points.length}
-              </Text>
-            </View>
-          </View>
-        </View>
-
-        {/* Action Controls */}
-        <View className="mb-5">
-          {status === "idle" && (
-            <TouchableOpacity
-              onPress={startRecording}
-              className="bg-[#FC5200] h-16 rounded-full justify-center items-center shadow-lg shadow-[#FC5200]/40"
-            >
-              <Text className="text-white text-xl font-black tracking-wider">
-                START
-              </Text>
-            </TouchableOpacity>
-          )}
-
-          {status === "recording" && (
-            <View className="flex-row gap-3">
-              <TouchableOpacity
-                onPress={pauseRecording}
-                className="flex-1 bg-amber-500 h-14 rounded-full justify-center items-center"
-              >
-                <Text className="text-white text-lg font-bold">PAUSE</Text>
-              </TouchableOpacity>
-
-              <TouchableOpacity
-                onPress={handleFinish}
-                className="flex-1 bg-red-600 h-14 rounded-full justify-center items-center"
-              >
-                <Text className="text-white text-lg font-bold">FINISH</Text>
-              </TouchableOpacity>
-            </View>
-          )}
-
-          {status === "paused" && (
-            <View className="flex-row gap-3">
-              <TouchableOpacity
-                onPress={resumeRecording}
-                className="flex-1 bg-emerald-600 h-14 rounded-full justify-center items-center"
-              >
-                <Text className="text-white text-lg font-bold">RESUME</Text>
-              </TouchableOpacity>
-
-              <TouchableOpacity
-                onPress={handleFinish}
-                className="flex-1 bg-red-600 h-14 rounded-full justify-center items-center"
-              >
-                <Text className="text-white text-lg font-bold">FINISH</Text>
-              </TouchableOpacity>
-            </View>
-          )}
-        </View>
+        {/* Enlarged Strava Curved Bottom Panel */}
+        <BottomControlPanel
+          status={status}
+          activityType={activityType}
+          selectedRoute={selectedRoute}
+          bottomInset={insets.bottom}
+          onOpenActivityModal={() => setIsActivityTypeModalOpen(true)}
+          onStartRecording={startRecording}
+          onPauseRecording={pauseRecording}
+          onResumeRecording={resumeRecording}
+          onFinishRecording={handleFinish}
+          onOpenRouteModal={() => setIsAddRouteModalOpen(true)}
+        />
       </View>
-    </SafeAreaView>
+
+      {/* Map Layer Switcher Modal */}
+      <Modal
+        visible={isLayerPickerOpen}
+        animationType="slide"
+        transparent={true}
+        onRequestClose={() => setIsLayerPickerOpen(false)}
+      >
+        <View className="flex-1 bg-black/50 justify-end">
+          <View className="bg-white dark:bg-slate-900 rounded-t-3xl p-5 max-h-[70%] shadow-2xl">
+            <View className="flex-row items-center justify-between mb-4 border-b border-gray-200 dark:border-slate-800 pb-3">
+              <View className="flex-row items-center">
+                <Ionicons name="layers" size={20} color="#FC5200" />
+                <Text className="text-gray-900 dark:text-white font-bold text-lg ml-2">
+                  Choose Map Style
+                </Text>
+              </View>
+              <TouchableOpacity
+                onPress={() => setIsLayerPickerOpen(false)}
+                className="bg-gray-100 dark:bg-slate-800 p-1.5 rounded-full"
+              >
+                <Ionicons name="close" size={20} color="#6B7280" />
+              </TouchableOpacity>
+            </View>
+
+            <ScrollView className="space-y-2">
+              {(Object.keys(tileProviders) as TileProviderId[]).map((key) => {
+                const provider = tileProviders[key]
+                const isSelected = providerId === key
+                return (
+                  <TouchableOpacity
+                    key={key}
+                    onPress={() => {
+                      setProviderId(key)
+                      setIsLayerPickerOpen(false)
+                    }}
+                    className={`p-3.5 rounded-xl border flex-row items-center justify-between my-1 ${
+                      isSelected
+                        ? "bg-orange-50 dark:bg-[#FC5200]/15 border-[#FC5200]"
+                        : "bg-gray-50 dark:bg-slate-800/60 border-gray-200 dark:border-slate-800"
+                    }`}
+                  >
+                    <View className="flex-1 mr-2">
+                      <Text
+                        className={`font-semibold text-sm ${
+                          isSelected ? "text-[#FC5200]" : "text-gray-900 dark:text-white"
+                        }`}
+                      >
+                        {provider.name}
+                      </Text>
+                    </View>
+                    {isSelected && <Ionicons name="checkmark-circle" size={22} color="#FC5200" />}
+                  </TouchableOpacity>
+                )
+              })}
+            </ScrollView>
+          </View>
+        </View>
+      </Modal>
+
+      {/* Activity Type Selection Modal */}
+      <ActivityTypeModal
+        visible={isActivityTypeModalOpen}
+        activityType={activityType}
+        onSelectActivity={(type) => setActivityType(type)}
+        onClose={() => setIsActivityTypeModalOpen(false)}
+      />
+
+      {/* Route Selection Modal */}
+      <RouteSelectionModal
+        visible={isAddRouteModalOpen}
+        selectedRoute={selectedRoute}
+        onSelectRoute={(route) => setSelectedRoute(route)}
+        onClose={() => setIsAddRouteModalOpen(false)}
+      />
+    </View>
   )
 }
