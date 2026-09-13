@@ -1,6 +1,6 @@
 import React from "react"
 import { View, Text, TouchableOpacity } from "react-native"
-import { Ionicons } from "@expo/vector-icons"
+import { Ionicons, MaterialCommunityIcons } from "@expo/vector-icons"
 
 export type ActivityTypeOption = "run" | "ride" | "walk" | "workout"
 
@@ -29,16 +29,16 @@ export default function BottomControlPanel({
   onFinishRecording,
   onOpenRouteModal,
 }: BottomControlPanelProps) {
-  const getActivityIconName = (type: ActivityTypeOption) => {
+  const getActivityIcon = (type: ActivityTypeOption) => {
     switch (type) {
       case "ride":
-        return "bicycle"
+        return <Ionicons name="bicycle" size={32} color="#FC5200" />
       case "walk":
-        return "walk"
+        return <Ionicons name="walk" size={32} color="#FC5200" />
       case "workout":
-        return "fitness"
+        return <Ionicons name="fitness" size={30} color="#FC5200" />
       default:
-        return "footsteps"
+        return <MaterialCommunityIcons name="run" size={34} color="#FC5200" />
     }
   }
 
@@ -57,90 +57,96 @@ export default function BottomControlPanel({
 
   return (
     <View
-      style={{ paddingBottom: Math.max(bottomInset, 28) }}
-      className="bg-white dark:bg-slate-900 border-t border-gray-200 dark:border-slate-800 rounded-t-3xl shadow-2xl pt-4 px-7"
+      style={{ paddingBottom: Math.max(bottomInset + 16, 28) }}
+      className="bg-white dark:bg-slate-900 rounded-t-[36px] shadow-2xl pt-3 px-6 justify-between border-t border-gray-100 dark:border-slate-800/80"
     >
       {/* Drag Handle Bar */}
-      <View className="w-12 h-1.5 bg-gray-300 dark:bg-slate-700 rounded-full self-center mb-3" />
+      <View className="w-10 h-1 bg-gray-500/80 dark:bg-slate-500 rounded-full self-center mt-1 mb-4" />
 
       {/* Main Controls Row */}
-      <View className="flex-row items-center justify-around my-3">
+      <View className="flex-row items-start justify-around my-1 py-1">
         {/* Left Button: Activity Switcher */}
         <TouchableOpacity
           onPress={onOpenActivityModal}
-          className="items-center active:scale-95"
+          activeOpacity={0.8}
+          className="items-center w-24"
         >
-          <View className="w-18 h-18 rounded-full bg-[#FFF1EB] dark:bg-orange-950/40 border border-orange-200 dark:border-orange-900/50 justify-center items-center relative">
-            <Ionicons
-              name={getActivityIconName(activityType) as any}
-              size={28}
-              color="#FC5200"
-            />
-            <View className="absolute top-0 right-0 bg-[#FC5200] w-6 h-6 rounded-full justify-center items-center border-2 border-white dark:border-slate-900 shadow-sm">
-              <Ionicons name="checkmark" size={12} color="white" />
+          <View className="w-[72px] h-[72px] rounded-full bg-[#FFEAE3] dark:bg-orange-950/40 justify-center items-center relative">
+            {getActivityIcon(activityType)}
+            {/* Checkmark Badge */}
+            <View className="absolute top-0 right-0 bg-[#FC5200] w-5 h-5 rounded-full justify-center items-center border-2 border-white dark:border-slate-900">
+              <Ionicons name="checkmark" size={11} color="white" />
             </View>
           </View>
-          <Text className="text-xs font-extrabold text-gray-800 dark:text-slate-200 mt-2 capitalize">
+          <Text className="text-[13px] font-semibold text-gray-900 dark:text-slate-100 mt-2 text-center capitalize">
             {getActivityLabel(activityType)}
           </Text>
         </TouchableOpacity>
 
-        {/* Center Button: Main Record / Pause / Resume / Finish */}
-        {status === "idle" && (
-          <TouchableOpacity
-            onPress={onStartRecording}
-            className="w-22 h-22 rounded-full bg-[#FC5200] justify-center items-center shadow-xl shadow-[#FC5200]/50 active:scale-95"
-          >
-            <Ionicons name="play" size={42} color="white" style={{ marginLeft: 4 }} />
-          </TouchableOpacity>
-        )}
-
-        {status === "recording" && (
-          <View className="flex-row items-center gap-4">
+        {/* Center Button: Record / Pause / Resume / Finish */}
+        <View className="items-center justify-center">
+          {status === "idle" && (
             <TouchableOpacity
-              onPress={onPauseRecording}
-              className="w-18 h-18 rounded-full bg-amber-500 justify-center items-center shadow-lg active:scale-95"
+              onPress={onStartRecording}
+              activeOpacity={0.85}
+              className="w-[82px] h-[82px] rounded-full bg-[#FC5200] justify-center items-center shadow-lg shadow-[#FC5200]/40"
             >
-              <Ionicons name="pause" size={30} color="white" />
+              <Ionicons name="play" size={44} color="white" style={{ marginLeft: 4 }} />
             </TouchableOpacity>
+          )}
 
-            <TouchableOpacity
-              onPress={onFinishRecording}
-              className="w-18 h-18 rounded-full bg-red-600 justify-center items-center shadow-lg active:scale-95"
-            >
-              <Ionicons name="square" size={24} color="white" />
-            </TouchableOpacity>
-          </View>
-        )}
+          {status === "recording" && (
+            <View className="flex-row items-center gap-3">
+              <TouchableOpacity
+                onPress={onPauseRecording}
+                activeOpacity={0.85}
+                className="w-[72px] h-[72px] rounded-full bg-amber-500 justify-center items-center shadow-md"
+              >
+                <Ionicons name="pause" size={32} color="white" />
+              </TouchableOpacity>
 
-        {status === "paused" && (
-          <View className="flex-row items-center gap-4">
-            <TouchableOpacity
-              onPress={onResumeRecording}
-              className="w-18 h-18 rounded-full bg-emerald-600 justify-center items-center shadow-lg active:scale-95"
-            >
-              <Ionicons name="play" size={30} color="white" style={{ marginLeft: 3 }} />
-            </TouchableOpacity>
+              <TouchableOpacity
+                onPress={onFinishRecording}
+                activeOpacity={0.85}
+                className="w-[72px] h-[72px] rounded-full bg-red-600 justify-center items-center shadow-md"
+              >
+                <Ionicons name="square" size={26} color="white" />
+              </TouchableOpacity>
+            </View>
+          )}
 
-            <TouchableOpacity
-              onPress={onFinishRecording}
-              className="w-18 h-18 rounded-full bg-red-600 justify-center items-center shadow-lg active:scale-95"
-            >
-              <Ionicons name="checkmark" size={30} color="white" />
-            </TouchableOpacity>
-          </View>
-        )}
+          {status === "paused" && (
+            <View className="flex-row items-center gap-3">
+              <TouchableOpacity
+                onPress={onResumeRecording}
+                activeOpacity={0.85}
+                className="w-[72px] h-[72px] rounded-full bg-emerald-600 justify-center items-center shadow-md"
+              >
+                <Ionicons name="play" size={32} color="white" style={{ marginLeft: 3 }} />
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                onPress={onFinishRecording}
+                activeOpacity={0.85}
+                className="w-[72px] h-[72px] rounded-full bg-red-600 justify-center items-center shadow-md"
+              >
+                <Ionicons name="checkmark" size={32} color="white" />
+              </TouchableOpacity>
+            </View>
+          )}
+        </View>
 
         {/* Right Button: Add Route */}
         <TouchableOpacity
           onPress={onOpenRouteModal}
-          className="items-center active:scale-95"
+          activeOpacity={0.8}
+          className="items-center w-24"
         >
-          <View className="w-18 h-18 rounded-full bg-gray-100 dark:bg-slate-800 border border-gray-200 dark:border-slate-700 justify-center items-center">
+          <View className="w-[72px] h-[72px] rounded-full bg-[#F0F1F5] dark:bg-slate-800 justify-center items-center">
             <Ionicons name="git-network-outline" size={28} color="#374151" />
           </View>
-          <Text className="text-xs font-semibold text-gray-700 dark:text-slate-300 mt-2 text-center">
-            {selectedRoute ? "Route Added" : "Add Route"}
+          <Text className="text-[13px] font-semibold text-gray-900 dark:text-slate-100 mt-2 text-center leading-tight">
+            {selectedRoute ? "Route\nAdded" : "Add\nRoute"}
           </Text>
         </TouchableOpacity>
       </View>

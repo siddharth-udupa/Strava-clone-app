@@ -34,9 +34,12 @@ try {
 // Types
 // ---------------------------------------------------------------------------
 export type RecorderState = "idle" | "recording" | "paused" | "finished"
+export type LocationStatus = "acquiring" | "acquired" | "disabled" | "denied"
 
 type RecorderData = {
   status: RecorderState
+  locationStatus: LocationStatus
+  currentPoint: ActivityPoint | null
   points: ActivityPoint[]
   distanceMeters: number
   elapsedSeconds: number
@@ -48,6 +51,8 @@ type RecorderData = {
 
 const INITIAL_DATA: RecorderData = {
   status: "idle",
+  locationStatus: "acquiring",
+  currentPoint: null,
   points: [],
   distanceMeters: 0,
   elapsedSeconds: 0,
@@ -108,6 +113,104 @@ export function useActivityRecorder(activityType: "run" | "ride" = "run") {
   const fgSubRef = useRef<{ remove: () => void } | null>(null)
   const webWatchRef = useRef<number | null>(null)
 
+  // ---- Request foreground & background location permissions on open ----
+  const requestLocationPermissions = useCallback(async (): Promise<boolean> => {
+    setData((prev) => ({ ...prev, locationStatus: "acquiring", errorMsg: null }))
+
+    if (hasExpoLocation && Location) {
+      try {
+        // Check if device location services are enabled
+        const checkEnabled = (Location as any).hasServicesEnabledAsync || (Location as any).isLocationEnabledAsync
+        if (typeof checkEnabled === "function") {
+          const isEnabled = await checkEnabled.call(Location)
+          if (!isEnabled) {
+            setData((prev) => ({
+              ...prev,
+              locationStatus: "disabled",
+              errorMsg: "Location services are turned off on your device.",
+            }))
+            return false
+          }
+        }
+
+        // Request Foreground Permission
+        const fgPerm = await Location.requestForegroundPermissionsAsync()
+        if (fgPerm.status !== "granted") {
+          setData((prev) => ({
+            ...prev,
+            locationStatus: "denied",
+            errorMsg: "Foreground location permission is required.",
+          }))
+          return false
+        }
+
+        // Request Background Permission
+        if (typeof Location.requestBackgroundPermissionsAsync === "function") {
+          try {
+            await Location.requestBackgroundPermissionsAsync()
+          } catch {
+            // Ignore background permission prompt rejection if foreground is granted
+          }
+        }
+
+        // Acquire initial current position
+        const initialPos = await getCurrentPosition()
+        setData((prev) => ({
+          ...prev,
+          locationStatus: "acquired",
+          currentPoint: initialPos || prev.currentPoint,
+        }))
+        return true
+      } catch (err: any) {
+        console.error("Location permission error:", err)
+        setData((prev) => ({
+          ...prev,
+          locationStatus: "disabled",
+          errorMsg: err.message || "Failed to access location services.",
+        }))
+        return false
+      }
+    } else if (hasWebGeolocation) {
+      return new Promise<boolean>((resolve) => {
+        navigator.geolocation.getCurrentPosition(
+          (pos) => {
+            const point = coordsToPoint(pos.coords, pos.timestamp)
+            setData((prev) => ({
+              ...prev,
+              locationStatus: "acquired",
+              currentPoint: point,
+            }))
+            resolve(true)
+          },
+          (err) => {
+            const isDenied = err.code === err.PERMISSION_DENIED
+            setData((prev) => ({
+              ...prev,
+              locationStatus: isDenied ? "denied" : "disabled",
+              errorMsg: isDenied
+                ? "Location permission denied."
+                : "Location service turned off.",
+            }))
+            resolve(false)
+          },
+          { enableHighAccuracy: true, timeout: 15000 }
+        )
+      })
+    } else {
+      setData((prev) => ({
+        ...prev,
+        locationStatus: "disabled",
+        errorMsg: "Location services are unavailable on this device or build.",
+      }))
+      return false
+    }
+  }, [])
+
+  // ---- Run permission check and initial position acquisition on mount ----
+  useEffect(() => {
+    requestLocationPermissions()
+  }, [requestLocationPermissions])
+
   // ---- Sync all UI state from a session object ----
   const syncFromSession = useCallback((session: ActiveSession) => {
     sessionRef.current = session
@@ -121,13 +224,6 @@ export function useActivityRecorder(activityType: "run" | "ride" = "run") {
       isBackgroundActive: session.isBackgroundActive,
       elapsedSeconds: computeElapsedSeconds(session),
     }))
-  }, [])
-
-  // ---- Show error if location is completely unavailable ----
-  useEffect(() => {
-    if (!isLocationAvailable) {
-      setData((prev) => ({ ...prev, errorMsg: "Location services are unavailable on this device or build." }))
-    }
   }, [])
 
   // ---- Hydrate from disk on mount ----
@@ -172,12 +268,14 @@ export function useActivityRecorder(activityType: "run" | "ride" = "run") {
 
     setData((prev) => ({
       ...prev,
-      points: [...prev.points, point],
+      currentPoint: point,
+      locationStatus: "acquired",
+      points: prev.status === "recording" ? [...prev.points, point] : prev.points,
       currentSpeedMps: point.speed !== null && point.speed >= 0 ? point.speed : prev.currentSpeedMps,
       maxSpeedMps: point.speed !== null && point.speed >= 0 ? Math.max(prev.maxSpeedMps, point.speed) : prev.maxSpeedMps,
     }))
 
-    // Keep session ref fresh for the timer (lightweight — just read from storage)
+    // Keep session ref fresh for the timer
     getActiveSession().then((session) => {
       if (session) {
         sessionRef.current = session
@@ -249,17 +347,9 @@ export function useActivityRecorder(activityType: "run" | "ride" = "run") {
     try {
       setData((prev) => ({ ...prev, errorMsg: null }))
 
-      // Request foreground permission
-      if (hasExpoLocation) {
-        const perm = await Location!.requestForegroundPermissionsAsync()
-        if (perm.status !== "granted") {
-          setData((prev) => ({ ...prev, errorMsg: "Foreground location permission is required." }))
-          return
-        }
-      } else if (!hasWebGeolocation) {
-        setData((prev) => ({ ...prev, errorMsg: "Location services are not available on this device." }))
-        return
-      }
+      // Verify location permissions
+      const granted = await requestLocationPermissions()
+      if (!granted) return
 
       // Attempt background tracking
       let bgActive = false
@@ -333,7 +423,7 @@ export function useActivityRecorder(activityType: "run" | "ride" = "run") {
 
       await clearActiveSession()
       sessionRef.current = null
-      setData(INITIAL_DATA)
+      setData((prev) => ({ ...INITIAL_DATA, locationStatus: prev.locationStatus, currentPoint: prev.currentPoint }))
 
       return summary
     } catch (err: any) {
@@ -348,6 +438,8 @@ export function useActivityRecorder(activityType: "run" | "ride" = "run") {
   // ===========================================================================
   return {
     status: data.status,
+    locationStatus: data.locationStatus,
+    currentPoint: data.currentPoint,
     points: data.points,
     distanceMeters: data.distanceMeters,
     elapsedSeconds: data.elapsedSeconds,
@@ -356,9 +448,11 @@ export function useActivityRecorder(activityType: "run" | "ride" = "run") {
     isBackgroundActive: data.isBackgroundActive,
     errorMsg: data.errorMsg,
     isNativeSupported: isLocationAvailable,
+    requestLocationPermissions,
     startRecording,
     pauseRecording,
     resumeRecording,
     stopAndSaveRecording,
   }
 }
+

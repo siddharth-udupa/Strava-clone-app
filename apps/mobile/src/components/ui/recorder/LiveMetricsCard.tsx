@@ -1,6 +1,7 @@
 import React from "react"
 import { View, Text } from "react-native"
 import GpsHeaderBanner from "./GpsHeaderBanner"
+import type { LocationStatus } from "@/hooks/useActivityRecorder"
 
 export type LiveMetricsCardProps = {
   formattedTime: string
@@ -9,10 +10,12 @@ export type LiveMetricsCardProps = {
   formattedDistance: string
   activityType: string
   status: "idle" | "recording" | "paused" | "finished"
+  locationStatus?: LocationStatus
   pointsCount: number
   distanceMeters: number
   isBackgroundActive: boolean
   onToggleExpand?: () => void
+  onRequestPermissions?: () => void
 }
 
 export default function LiveMetricsCard({
@@ -22,21 +25,26 @@ export default function LiveMetricsCard({
   formattedDistance,
   activityType,
   status,
+  locationStatus,
   pointsCount,
   distanceMeters,
   isBackgroundActive,
   onToggleExpand,
+  onRequestPermissions,
 }: LiveMetricsCardProps) {
   const isPaceMode = activityType !== "ride"
 
   return (
     <View className="mx-4 mb-3">
-      {/* Light Green Header Bar */}
+      {/* Light Green / Dynamic Header Bar */}
       <GpsHeaderBanner
         status={status}
+        locationStatus={locationStatus}
         isBackgroundActive={isBackgroundActive}
         onToggleExpand={onToggleExpand}
+        onRequestPermissions={onRequestPermissions}
       />
+
 
       {/* 3-Column Metrics Grid */}
       <View className="bg-white dark:bg-slate-900 border border-gray-200 dark:border-slate-800 rounded-b-2xl p-4 shadow-xl flex-row justify-between items-center">
