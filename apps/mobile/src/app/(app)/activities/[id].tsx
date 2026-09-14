@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react"
-import { View, Dimensions, ActivityIndicator, StatusBar } from "react-native"
+import { View, Dimensions, ActivityIndicator, StatusBar, Alert } from "react-native"
 import { useSafeAreaInsets } from "react-native-safe-area-context"
 import { Redirect, useLocalSearchParams, useRouter } from "expo-router"
 import { Gesture, GestureDetector } from "react-native-gesture-handler"
@@ -15,6 +15,7 @@ import { DEFAULT_TILE_PROVIDER, type TileProviderId } from "@repo/maps"
 import { metersToDistance, metersToElevation, formatDurationShort, computePace } from "@repo/units"
 import type { ActivityDetailsType } from "@repo/types"
 import { authClient, useSession } from "@/lib/auth-client"
+import { removeActivityFromCache } from "@/hooks/useActivities"
 import {
   ActivityNotFound,
   ActivityHeaderOverlay,
@@ -28,7 +29,7 @@ import {
 
 const { height: SCREEN_HEIGHT } = Dimensions.get("window")
 
-const API_URL = process.env.EXPO_PUBLIC_API_URL ?? "http://192.168.31.240:3000"
+const API_URL = process.env.EXPO_PUBLIC_API_URL!
 
 export default function ActivityDetailScreen() {
   const { data: session } = useSession()
@@ -38,6 +39,7 @@ export default function ActivityDetailScreen() {
 
   const [data, setdata] = useState<ActivityDetailsType | null>(null)
   const [isLoading, setIsLoading] = useState<boolean>(true)
+  const [isDeleting, setIsDeleting] = useState<boolean>(false)
   const [activeTab, setActiveTab] = useState<TabType>("overview")
   const [currentProviderId, setCurrentProviderId] = useState<TileProviderId>(DEFAULT_TILE_PROVIDER)
 
@@ -140,6 +142,55 @@ export default function ActivityDetailScreen() {
     }
   }
 
+  const handleDeleteActivity = () => {
+    if (!id) return
+
+    Alert.alert(
+      "Delete Activity",
+      "Are you sure you want to delete this activity? This action cannot be undone.",
+      [
+        { text: "Cancel", style: "cancel" },
+        {
+          text: "Delete",
+          style: "destructive",
+          onPress: async () => {
+            try {
+              setIsDeleting(true)
+              const res: any = await authClient.$fetch(
+                `${API_URL}/api/activities/${id}`,
+                {
+                  method: "DELETE",
+                }
+              )
+
+              if (res?.error) {
+                const errorMsg =
+                  typeof res.error === "string"
+                    ? res.error
+                    : res.error?.message || "Failed to delete activity"
+                Alert.alert("Error", errorMsg)
+              } else {
+                removeActivityFromCache(id)
+                if (router.canGoBack()) {
+                  router.back()
+                } else {
+                  router.replace("/(app)/dashboard" as any)
+                }
+              }
+            } catch (err: any) {
+              console.error("Delete error:", err)
+              const errorMessage =
+                err?.data?.error || err?.message || "Failed to delete activity. Please try again."
+              Alert.alert("Error", errorMessage)
+            } finally {
+              setIsDeleting(false)
+            }
+          },
+        },
+      ]
+    )
+  }
+
   if (!session) {
     return <Redirect href={"/(auth)/sign-in" as any} />
   }
@@ -183,7 +234,12 @@ export default function ActivityDetailScreen() {
         />
 
         {/* Top Header Floating Overlay (Back, Share, Actions) */}
-        <ActivityHeaderOverlay topInset={insets.top} onBack={handleBack} />
+        <ActivityHeaderOverlay
+          topInset={insets.top}
+          onBack={handleBack}
+          onDeleteActivity={handleDeleteActivity}
+          isDeleting={isDeleting}
+        />
 
         {/* Floating Tile Provider Picker Button */}
         <TileProviderPicker

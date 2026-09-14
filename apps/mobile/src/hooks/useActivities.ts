@@ -2,7 +2,17 @@ import { useState, useEffect, useCallback } from "react"
 import type { ActivityCardType } from "@repo/types"
 import { authClient } from "@/lib/auth-client"
 
-const API_URL = process.env.EXPO_PUBLIC_API_URL ?? "http://192.168.31.240:3000"
+const API_URL = process.env.EXPO_PUBLIC_API_URL!
+
+// Global listener registry so all active useActivities hooks update instantly when an activity is deleted anywhere
+const deleteListeners = new Set<(activityId: string) => void>()
+
+/**
+ * Remove an activity by ID from all active `useActivities` caches/states across the app.
+ */
+export function removeActivityFromCache(activityId: string) {
+  deleteListeners.forEach((listener) => listener(activityId))
+}
 
 export function useActivities(userId: string) {
   const [activities, setActivities] = useState<ActivityCardType[]>([])
@@ -48,15 +58,36 @@ export function useActivities(userId: string) {
     fetchActivities()
   }, [fetchActivities])
 
+  // Subscribe to deletion events so deleted activities get filtered out of state immediately
+  useEffect(() => {
+    const handleActivityDeleted = (deletedId: string) => {
+      setActivities((prev) =>
+        prev.filter((a) => a.activityId !== deletedId && (a as any).id !== deletedId)
+      )
+    }
+
+    deleteListeners.add(handleActivityDeleted)
+    return () => {
+      deleteListeners.delete(handleActivityDeleted)
+    }
+  }, [])
+
   const refetch = useCallback(() => {
     return fetchActivities(true)
   }, [fetchActivities])
 
+  const deleteActivity = useCallback((activityId: string) => {
+    removeActivityFromCache(activityId)
+  }, [])
+
   return {
     activities,
+    setActivities,
+    deleteActivity,
     isLoading,
     refreshing,
     error,
     refetch,
   }
 }
+
