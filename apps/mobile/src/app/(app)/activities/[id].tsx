@@ -1,15 +1,14 @@
-import { useState, useEffect, useRef } from "react"
-import {
-  View,
-  ScrollView,
-  Animated,
-  PanResponder,
-  Dimensions,
-  ActivityIndicator,
-  StatusBar,
-} from "react-native"
+import { useState, useEffect } from "react"
+import { View, Dimensions, ActivityIndicator, StatusBar } from "react-native"
 import { useSafeAreaInsets } from "react-native-safe-area-context"
 import { Redirect, useLocalSearchParams, useRouter } from "expo-router"
+import { Gesture, GestureDetector } from "react-native-gesture-handler"
+import Animated, {
+  useSharedValue,
+  useAnimatedStyle,
+  useAnimatedScrollHandler,
+  withSpring,
+} from "react-native-reanimated"
 import Map from "@/components/map/Map"
 import TileProviderPicker from "@/components/map/TileProviderPicker"
 import { DEFAULT_TILE_PROVIDER, type TileProviderId } from "@repo/maps"
@@ -28,9 +27,6 @@ import {
 } from "@/components/ui/activity"
 
 const { height: SCREEN_HEIGHT } = Dimensions.get("window")
-const MIN_SHEET_HEIGHT = SCREEN_HEIGHT * 0.2
-const MID_SHEET_HEIGHT = SCREEN_HEIGHT * 0.5
-const MAX_SHEET_HEIGHT = SCREEN_HEIGHT * 0.88
 
 const API_URL = process.env.EXPO_PUBLIC_API_URL ?? "http://192.168.31.240:3000"
 
@@ -45,36 +41,73 @@ export default function ActivityDetailScreen() {
   const [activeTab, setActiveTab] = useState<TabType>("overview")
   const [currentProviderId, setCurrentProviderId] = useState<TileProviderId>(DEFAULT_TILE_PROVIDER)
 
-  // Animated Bottom Sheet height state
-  const sheetAnimHeight = useRef(new Animated.Value(MID_SHEET_HEIGHT)).current
+  // 3 Strava-like snap positions (Y coordinate offset from top of screen)
+  const EXPANDED_Y = SCREEN_HEIGHT * 0.08  // 8% from top
+  const HALF_Y = SCREEN_HEIGHT * 0.50      // 50% from top
+  const COLLAPSED_Y = SCREEN_HEIGHT * 0.78 // 78% from top
 
-  const panResponder = useRef(
-    PanResponder.create({
-      onMoveShouldSetPanResponder: (_, gestureState) => Math.abs(gestureState.dy) > 5,
-      onPanResponderGrant: () => {
-        sheetAnimHeight.extractOffset()
-      },
-      onPanResponderMove: (_, gestureState) => {
-        sheetAnimHeight.setValue(-gestureState.dy)
-      },
-      onPanResponderRelease: (_, gestureState) => {
-        sheetAnimHeight.flattenOffset()
-        const currentVal = (sheetAnimHeight as any)._value
-        let targetVal = MID_SHEET_HEIGHT
-        if (currentVal > (MID_SHEET_HEIGHT + MAX_SHEET_HEIGHT) / 2) {
-          targetVal = MAX_SHEET_HEIGHT
-        } else if (currentVal < (MIN_SHEET_HEIGHT + MID_SHEET_HEIGHT) / 2) {
-          targetVal = MIN_SHEET_HEIGHT
-        }
-        Animated.spring(sheetAnimHeight, {
-          toValue: targetVal,
-          useNativeDriver: false,
-          friction: 8,
-          tension: 40,
-        }).start()
-      },
+  // Reanimated bottom sheet shared values
+  const translateY = useSharedValue(HALF_Y)
+  const contextY = useSharedValue(HALF_Y)
+  const scrollY = useSharedValue(0)
+
+  // Pan gesture for the drag handle bar and athlete header area
+  const handlePanGesture = Gesture.Pan()
+    .onStart(() => {
+      contextY.value = translateY.value
     })
-  ).current
+    .onUpdate((event) => {
+      let nextY = contextY.value + event.translationY
+      if (nextY < EXPANDED_Y) {
+        nextY = EXPANDED_Y + (nextY - EXPANDED_Y) * 0.2
+      } else if (nextY > COLLAPSED_Y) {
+        nextY = COLLAPSED_Y + (nextY - COLLAPSED_Y) * 0.2
+      }
+      translateY.value = nextY
+    })
+    .onEnd((event) => {
+      const velocityY = event.velocityY
+      const currentY = translateY.value
+
+      let targetY = HALF_Y
+
+      if (velocityY < -400) {
+        // Fast swipe UP
+        targetY = currentY > HALF_Y ? HALF_Y : EXPANDED_Y
+      } else if (velocityY > 400) {
+        // Fast swipe DOWN
+        targetY = currentY < HALF_Y ? HALF_Y : COLLAPSED_Y
+      } else {
+        // Nearest snap point distance calculation
+        const distToExpanded = Math.abs(currentY - EXPANDED_Y)
+        const distToHalf = Math.abs(currentY - HALF_Y)
+        const distToCollapsed = Math.abs(currentY - COLLAPSED_Y)
+
+        if (distToExpanded <= distToHalf && distToExpanded <= distToCollapsed) {
+          targetY = EXPANDED_Y
+        } else if (distToCollapsed <= distToHalf && distToCollapsed <= distToExpanded) {
+          targetY = COLLAPSED_Y
+        } else {
+          targetY = HALF_Y
+        }
+      }
+
+      translateY.value = withSpring(targetY, {
+        damping: 25,
+        stiffness: 220,
+        mass: 0.8,
+      })
+    })
+
+  const animatedSheetStyle = useAnimatedStyle(() => {
+    return {
+      transform: [{ translateY: translateY.value }],
+    }
+  })
+
+  const scrollHandler = useAnimatedScrollHandler((event) => {
+    scrollY.value = event.contentOffset.y
+  })
 
   useEffect(() => {
     async function fetchActivityData() {
@@ -134,7 +167,7 @@ export default function ActivityDetailScreen() {
     <View className="flex-1 bg-gray-100 dark:bg-slate-950">
       <StatusBar barStyle="dark-content" backgroundColor="transparent" translucent />
 
-      {/* MAP LAYER (Interactive & Changeable Map) */}
+      {/* MAP LAYER (Interactive & Fixed Background Map) */}
       <View className="flex-1">
         <Map
           encodedPolyline={data.encodedPolyline || undefined}
@@ -143,7 +176,7 @@ export default function ActivityDetailScreen() {
           style={{ width: "100%", height: "100%" }}
           boundsPadding={{
             top: Math.max(insets.top, 16) + 60,
-            bottom: SCREEN_HEIGHT * 0.5 + 24,
+            bottom: HALF_Y + 24,
             left: 28,
             right: 28,
           }}
@@ -160,61 +193,72 @@ export default function ActivityDetailScreen() {
         />
       </View>
 
-      {/* DRAGGABLE BOTTOM SHEET MODAL */}
+      {/* REANIMATED BOTTOM SHEET MODAL (Fixed Full Height with translateY Transform) */}
       <Animated.View
-        style={{
-          height: sheetAnimHeight,
-          paddingBottom: Math.max(insets.bottom, 12),
-          position: "absolute",
-          left: -2,
-          right: -2,
-          bottom: -4,
-        }}
-        className="bg-white dark:bg-slate-900 border-t border-gray-200 dark:border-slate-800 rounded-t-3xl shadow-2xl z-30"
+        style={[
+          {
+            position: "absolute",
+            left: 0,
+            right: 0,
+            bottom: 0,
+            height: SCREEN_HEIGHT,
+          },
+          animatedSheetStyle,
+        ]}
+        className="bg-white dark:bg-slate-900 border-t border-gray-200 dark:border-slate-800 rounded-t-3xl shadow-2xl z-30 overflow-hidden"
       >
-        {/* Drag Handle Bar */}
-        <View {...panResponder.panHandlers} className="w-full items-center py-3 active:opacity-70">
-          <View className="w-12 h-1.5 rounded-full bg-gray-300 dark:bg-slate-700" />
-        </View>
+        {/* Drag Handle & Top Athlete Header Region */}
+        <GestureDetector gesture={handlePanGesture}>
+          <View className="w-full bg-white dark:bg-slate-900">
+            <View
+              className="w-full items-center py-3.5 active:opacity-70"
+              hitSlop={{ top: 12, bottom: 12, left: 24, right: 24 }}
+              style={{ cursor: "grab" as any }}
+            >
+              <View className="w-12 h-1.5 rounded-full bg-gray-300 dark:bg-slate-700" />
+            </View>
 
-        {isLoading ? (
-          <View className="flex-1 items-center justify-center">
-            <ActivityIndicator size="large" color="#FC5200" />
-          </View>
-        ) : (
-          <ScrollView
-            showsVerticalScrollIndicator={false}
-            contentContainerStyle={{ paddingHorizontal: 16, paddingBottom: 24 }}
-          >
-            {/* Athlete Header */}
-            <ActivityAthleteHeader
-              userName={data.user.name}
-              createdAt={data.createdAt}
-              activityType={data.type}
-              title={data.title}
-              description={data.description}
-            />
-
-            {/* Kudos & Social Action Bar */}
-            <ActivitySocialBar />
-
-            {/* TAB NAVIGATION HEADER (Overview, Analysis, Segments, Best Efforts) */}
-            <ActivityTabNavigation activeTab={activeTab} onSelectTab={setActiveTab} />
-
-            {/* TAB CONTENT */}
-            {activeTab === "overview" ? (
-              <ActivityOverviewTab
-                distance={distance}
-                duration={duration}
-                pace={pace}
-                elevGain={elevGain}
-                elevLoss={elevLoss}
+            <View className="px-4 pb-2">
+              <ActivityAthleteHeader
+                userName={data.user.name}
+                createdAt={data.createdAt}
+                activityType={data.type}
+                title={data.title}
+                description={data.description}
               />
-            ) : (
-              <ActivityTabViews activeTab={activeTab} />
-            )}
-          </ScrollView>
-        )}
+            </View>
+          </View>
+        </GestureDetector>
+
+        {/* Scrollable Activity Content */}
+        <Animated.ScrollView
+          onScroll={scrollHandler}
+          scrollEventThrottle={16}
+          showsVerticalScrollIndicator={false}
+          contentContainerStyle={{
+            paddingHorizontal: 16,
+            paddingBottom: Math.max(insets.bottom + 80, 100),
+          }}
+        >
+          {/* Kudos & Social Action Bar */}
+          <ActivitySocialBar />
+
+          {/* TAB NAVIGATION HEADER (Overview, Analysis, Segments, Best Efforts) */}
+          <ActivityTabNavigation activeTab={activeTab} onSelectTab={setActiveTab} />
+
+          {/* TAB CONTENT */}
+          {activeTab === "overview" ? (
+            <ActivityOverviewTab
+              distance={distance}
+              duration={duration}
+              pace={pace}
+              elevGain={elevGain}
+              elevLoss={elevLoss}
+            />
+          ) : (
+            <ActivityTabViews activeTab={activeTab} />
+          )}
+        </Animated.ScrollView>
       </Animated.View>
     </View>
   )
