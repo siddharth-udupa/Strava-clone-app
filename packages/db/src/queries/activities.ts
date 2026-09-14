@@ -1,7 +1,8 @@
-import { desc, eq } from "drizzle-orm"
+import { and, desc, eq } from "drizzle-orm"
 import { db } from "../db"
 import { activities, activitiesInsertType, user } from "../schema"
 
+export type ActivityDetailsType = NonNullable<Awaited<ReturnType<typeof getActivityDetails>>>
 
 export async function getActivitiesByUser(userId: string, limit = 5, offset = 0) {
   const UserActivities = await db
@@ -49,8 +50,6 @@ export async function getActivityDetails(activityId: string) {
   return activity
 }
 
-export type ActivityDetailsType = NonNullable<Awaited<ReturnType<typeof getActivityDetails>>>
-
 export async function CreateActivity(data: activitiesInsertType) {
   const res = await db
     .insert(activities)
@@ -58,4 +57,17 @@ export async function CreateActivity(data: activitiesInsertType) {
     .returning()
 
   return res
+}
+
+export async function DeleteActivity(activityId: string, userId?: string) {
+  const whereClause = userId
+    ? and(eq(activities.activityId, activityId), eq(activities.userId, userId))
+    : eq(activities.activityId, activityId)
+
+  const [res] = await db
+    .delete(activities)
+    .where(whereClause)
+    .returning({ id: activities.activityId })
+
+  return res ?? null
 }
