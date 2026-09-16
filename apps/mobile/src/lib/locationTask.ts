@@ -1,5 +1,5 @@
 import { Platform } from "react-native"
-import { appendPointsToActiveSession } from "./activeSessionStorage"
+import { appendPointsToActiveSession, isValidLocationPoint } from "./activeSessionStorage"
 import { type LocationTaskOptions } from "expo-location"
 import type { ActivityPoint } from "@repo/types"
 
@@ -17,12 +17,7 @@ export function subscribeToLocationUpdates(listener: LocationListener) {
   return () => { listeners.delete(listener) }
 }
 
-/** Check if a GPS coordinate is sufficiently accurate. */
-export function isValidLocationPoint(point: ActivityPoint): boolean {
-  if (point.accuracy !== null && point.accuracy > 100) return false
-  if (point.latitude === 0 && point.longitude === 0) return false
-  return true
-}
+export { isValidLocationPoint }
 
 // ---------------------------------------------------------------------------
 // Native modules (optional — guarded by try/catch)

@@ -312,7 +312,11 @@ export default function ActivityDetailScreen() {
               elevLoss={elevLoss}
             />
           ) : (
-            <ActivityTabViews activeTab={activeTab} />
+            <ActivityTabViews
+              activeTab={activeTab}
+              streams={data.streams}
+              preferences={data.user?.preferences}
+            />
           )}
         </Animated.ScrollView>
       </Animated.View>

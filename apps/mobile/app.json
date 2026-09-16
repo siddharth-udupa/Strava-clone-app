@@ -12,7 +12,10 @@
       "bundleIdentifier": "com.redstonenight.stravaclone",
       "infoPlist": {
         "ITSAppUsesNonExemptEncryption": false,
-        "UIBackgroundModes": ["location", "fetch"],
+        "UIBackgroundModes": [
+          "location",
+          "fetch"
+        ],
         "NSLocationWhenInUseUsageDescription": "Strava Clone needs location access to track your runs and rides.",
         "NSLocationAlwaysAndWhenInUseUsageDescription": "Strava Clone needs background location access to track your activity when the screen is off.",
         "NSLocationAlwaysUsageDescription": "Strava Clone needs background location access to track your activity."
@@ -60,7 +63,10 @@
           "isAndroidBackgroundLocationEnabled": true,
           "isAndroidForegroundServiceEnabled": true
         }
-      ]
+      ],
+      "expo-font",
+      "expo-secure-store",
+      "expo-web-browser"
     ],
     "experiments": {
       "typedRoutes": true,

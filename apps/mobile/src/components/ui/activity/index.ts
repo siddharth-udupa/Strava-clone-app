@@ -16,5 +16,8 @@ export type { ActivityTabNavigationProps, TabType } from "./TabNavigation"
 export { default as ActivityOverviewTab } from "./OverviewTab"
 export type { ActivityOverviewTabProps } from "./OverviewTab"
 
+export { default as ActivityAnalysisTab } from "./AnalysisTab"
+export type { ActivityAnalysisTabProps } from "./AnalysisTab"
+
 export { default as ActivityTabViews } from "./TabViews"
 export type { ActivityTabViewsProps } from "./TabViews"
