@@ -1,14 +1,14 @@
-import React, { useMemo, useEffect } from "react"
-import { View, TextInput, StyleSheet } from "react-native"
+import React, { useMemo } from "react"
+import { TextInput } from "react-native"
+import { View } from "react-native"
 import Animated, {
   useAnimatedProps,
   useDerivedValue,
-  useSharedValue,
 } from "react-native-reanimated"
 import type { SharedValue } from "react-native-reanimated"
 import { CartesianChart, Area, useChartPressState } from "victory-native"
 import { Circle, Line as SkiaLine, Group } from "@shopify/react-native-skia"
-import { GestureHandlerRootView } from "react-native-gesture-handler"
+
 import {
   metersToDistance,
   metersToElevation,
@@ -62,6 +62,7 @@ export function buildChartData(
     const spd = speedToMps(speedData[i]!, speedUnit)
 
     // Grade: (vertical change / horizontal distance) × 100
+    // Calculated from the raw meter arrays so unit conversion doesn't affect it.
     let grade = 0
     if (prevAlt !== null && prevDist !== null) {
       const dAlt = altitudeData[i]! - altitudeData[i - step]!
@@ -101,47 +102,28 @@ export default function ActivityChart({
   const distLabel = distanceUnit === "imperial" ? "mi" : "km"
   const elevLabel = elevationUnit === "feet" ? "ft" : "m"
 
-  // ── UI-thread data access ─────────────────────────────────────────────────
-  // Store the chart data in a SharedValue so worklets can read it without
-  // crossing the JS/UI thread boundary via runOnJS.
-  const dataShared = useSharedValue<ChartPoint[]>(data)
-  useEffect(() => {
-    dataShared.value = data
-  }, [data, dataShared])
-
-  // Find the closest data point to the pressed x-position — entirely on the
-  // UI thread. No runOnJS, no setState, no React re-render triggered here.
-  const closestPoint = useDerivedValue<ChartPoint | null>(() => {
-    if (!isActive.value) return null
-    const pts = dataShared.value
-    if (!pts.length) return null
-
-    let closest = pts[0]!
-    let minDiff = Infinity
-    for (const p of pts) {
-      const diff = Math.abs(p.distance - state.x.value.value)
-      if (diff < minDiff) {
-        minDiff = diff
-        closest = p
-      }
-    }
-    return closest
-  })
-
-  // Derive the tooltip text on the UI thread. distLabel/elevLabel are plain
-  // strings captured in the worklet closure — safe and cheap.
+  // Derive tooltip text directly from Victory's chart press state — entirely on
+  // the UI thread. state.x.value and state.y.altitude.value are SharedValues,
+  // so their actual numbers live one more `.value` deep.
+  //
+  // NOTE: `useChartPressState` returns `isActive` as a plain React boolean
+  // (driven by useState). The actual SharedValue<boolean> is `state.isActive`.
+  // Always use `state.isActive` inside worklets.
   const tooltipText = useDerivedValue(() => {
-    const p = closestPoint.value
-    if (!p) return "Tap or drag across graph to inspect points"
+    if (!state.isActive.value) {
+      return "Tap or drag across graph to inspect points"
+    }
+
+    const distance = state.x.value.value
+    const altitude = state.y.altitude.value.value
+
     return (
-      `Dist: ${p.distance.toFixed(2)} ${distLabel}` +
-      `  ·  Elev: ${p.altitude.toFixed(0)} ${elevLabel}` +
-      `  ·  Grade: ${p.grade.toFixed(1)}%`
+      `Dist: ${distance.toFixed(2)} ${distLabel}` +
+      `  ·  Elev: ${altitude.toFixed(0)} ${elevLabel}`
     )
   })
 
-  // useAnimatedProps drives the TextInput text from the UI thread —
-  // zero React re-renders, zero risk of stale navigation context.
+  // Drive the TextInput text from the UI thread — zero React re-renders.
   const tooltipAnimatedProps = useAnimatedProps(() => ({
     text: tooltipText.value,
     defaultValue: "Tap or drag across graph to inspect points",
@@ -150,18 +132,21 @@ export default function ActivityChart({
   if (data.length === 0) return null
 
   return (
-    <View style={styles.wrapper}>
+    <View className="my-4 w-full">
       {/* Tooltip row — updated on the UI thread, never causes a React re-render */}
       <AnimatedTextInput
         animatedProps={tooltipAnimatedProps}
         editable={false}
-        style={styles.tooltip}
+        className="text-[11px] text-gray-500 dark:text-slate-400 italic px-3 py-1.5 mb-1 border-0 bg-transparent"
       />
 
-      {/* Elevation Chart wrapped in its own GestureHandlerRootView so
-          victory-native's internal gestures are scoped independently from
-          the surrounding bottom-sheet GestureDetector / Animated.ScrollView. */}
-      <GestureHandlerRootView style={styles.chartContainer}>
+      {/* Victory's ChartWrapper already includes its own GestureHandlerRootView
+          internally, so we only need a plain View here. We must use an explicit
+          numeric `style` height so Victory's `onLayout` fires correctly —
+          NativeWind className alone on a non-View component won't propagate
+          layout dimensions reliably and would leave hasMeasuredLayoutSize=false,
+          causing the chart to render nothing. */}
+      <View className="w-full" style={{ height: 200 }}>
         <CartesianChart
           data={data}
           xKey="distance"
@@ -184,36 +169,36 @@ export default function ActivityChart({
                 animate={{ type: "timing", duration: 300 }}
               />
               {/* Always render ToolTip; visibility is controlled by animated
-                  opacity on the Skia Group — safe to use a SharedValue here. */}
+                  opacity on the Skia Group — avoids treating a SharedValue as
+                  a React boolean (which would always be truthy as an object). */}
               <ToolTip
                 x={state.x.position}
                 y={state.y.altitude.position}
                 bottom={chartBounds.bottom}
-                isActive={isActive}
+                isActive={state.isActive}
               />
             </>
           )}
         </CartesianChart>
-      </GestureHandlerRootView>
+      </View>
     </View>
   )
 }
 
 // ── ToolTip ───────────────────────────────────────────────────────────────────
-// Uses Skia Group opacity (animated by a DerivedValue) instead of a React
-// conditional `{isActive && ...}`. isActive is a SharedValue<boolean>, so
-// using it in a React expression would always evaluate truthy (object != false).
-function ToolTip({
-  x,
-  y,
-  bottom,
-  isActive,
-}: {
+// Receives Victory's SharedValue positions directly and uses a DerivedValue for
+// opacity so the crosshair shows/hides entirely on the UI thread.
+//
+// `isActive` here is `state.isActive` — the SharedValue<boolean> that lives
+// inside ChartPressState, not the plain boolean returned by useChartPressState.
+type ToolTipProps = {
   x: SharedValue<number>
   y: SharedValue<number>
   bottom: number
   isActive: SharedValue<boolean>
-}) {
+}
+
+function ToolTip({ x, y, bottom, isActive }: ToolTipProps) {
   // Drives opacity on the UI thread — no React render needed to show/hide.
   const opacity = useDerivedValue(() => (isActive.value ? 1 : 0))
 
@@ -228,25 +213,3 @@ function ToolTip({
     </Group>
   )
 }
-
-const styles = StyleSheet.create({
-  wrapper: {
-    marginVertical: 16,
-    width: "100%",
-  },
-  tooltip: {
-    fontSize: 11,
-    color: "#6b7280",
-    fontStyle: "italic",
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    marginBottom: 4,
-    // Prevent the TextInput chrome from showing
-    borderWidth: 0,
-    backgroundColor: "transparent",
-  },
-  chartContainer: {
-    height: 200,
-    width: "100%",
-  },
-})

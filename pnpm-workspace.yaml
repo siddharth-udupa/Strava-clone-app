@@ -21,5 +21,3 @@ minimumReleaseAgeExclude:
   - babel-preset-expo@57.0.12
   - expo-location@57.0.18
   - expo-task-manager@57.0.18
-patchedDependencies:
-  its-fine: patches/its-fine.patch

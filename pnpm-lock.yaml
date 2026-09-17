@@ -203,9 +203,6 @@ settings:
   autoInstallPeers: true
   excludeLinksFromLockfile: false
 
-patchedDependencies:
-  its-fine: 5965147d5a712dbefbd4d52219d76dfbdc0458d04b033bc9674270fc06ba321f
-
 importers:
 
   .:
@@ -11557,7 +11554,7 @@ snapshots:
       has-symbols: 1.1.0
       set-function-name: 2.0.2
 
-  its-fine@1.2.5(patch_hash=5965147d5a712dbefbd4d52219d76dfbdc0458d04b033bc9674270fc06ba321f)(@types/react@19.2.18)(react@19.2.3):
+  its-fine@1.2.5(@types/react@19.2.18)(react@19.2.3):
     dependencies:
       '@types/react-reconciler': 0.28.9(@types/react@19.2.18)
       react: 19.2.3
@@ -13683,7 +13680,7 @@ snapshots:
       d3-scale: 4.0.2
       d3-shape: 3.2.0
       d3-zoom: 3.0.0
-      its-fine: 1.2.5(patch_hash=5965147d5a712dbefbd4d52219d76dfbdc0458d04b033bc9674270fc06ba321f)(@types/react@19.2.18)(react@19.2.3)
+      its-fine: 1.2.5(@types/react@19.2.18)(react@19.2.3)
       react: 19.2.3
       react-fast-compare: 3.2.2
       react-native: 0.86.3(@babel/core@7.29.7(supports-color@8.1.1))(@react-native/metro-config@0.86.3(@babel/core@7.29.7(supports-color@8.1.1))(supports-color@8.1.1))(@types/react@19.2.18)(react@19.2.3)(supports-color@8.1.1)
