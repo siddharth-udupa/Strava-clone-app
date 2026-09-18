@@ -18,7 +18,7 @@ The project currently has both **Web** and **Expo React Native App** implementat
   - [ ] OAuth on App — needs mobile-specific implementation
 - [x] Basic onboarding
   - [x] Web
-  - [ ] App
+  - [x] App
 - [x] Dashboard
   - [x] Activity feed
   - [x] User's activities
