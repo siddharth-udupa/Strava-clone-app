@@ -47,13 +47,20 @@ export default function SignInScreen() {
   const handleGoogleSignIn = async () => {
     setLoading(true)
     try {
-      await signIn.social({ provider: "google", callbackURL: "/dashboard" })
-      router.push("/(app)/dashboard")
-    }
-    catch (err) {
+      const { data, error } = await signIn.social({
+        provider: "google",
+        callbackURL: "/dashboard",
+      })
+      if (error) {
+        Alert.alert("Google Sign-In Failed", error.message ?? "Something went wrong")
+        return
+      }
+      if (data) {
+        router.replace("/(app)/dashboard" as any)
+      }
+    } catch (err) {
       Alert.alert("OAuth Error", err instanceof Error ? err.message : "Google sign-in failed")
-    }
-    finally {
+    } finally {
       setLoading(false)
     }
   }
