@@ -28,6 +28,11 @@ export default function DashboardScreen() {
     await signOut()
   }
 
+  // Bottom bar height: pt-2 (8) + icon+label area (~44) + paddingBottom = ~52 + Math.max(insets.bottom, 25)
+  // FAB sits 12px above the top edge of the bottom bar
+  const bottomBarHeight = 52 + Math.max(insets.bottom, 25)
+  const fabBottom = bottomBarHeight + 12
+
   return (
     <View className="flex-1 bg-gray-100 dark:bg-slate-950">
       <StatusBar barStyle="dark-content" backgroundColor="#FFFFFF" />
@@ -82,6 +87,18 @@ export default function DashboardScreen() {
         setActiveTab={setActiveTab}
         onRecordPress={() => router.push("/(app)/recorder/recorder" as any)}
       />
+
+      {/* FLOATING ADD ACTIVITY BUTTON — sits above the bottom bar on the left */}
+      <TouchableOpacity
+        onPress={() => router.push("/(app)/upload/manual" as any)}
+        style={{ bottom: fabBottom, right: 16 }}
+        className="absolute z-40 w-14 h-14 rounded-full bg-[#FC5200] items-center justify-center shadow-lg shadow-[#FC5200]/40"
+        activeOpacity={0.8}
+        accessibilityLabel="Log activity manually"
+        accessibilityRole="button"
+      >
+        <Ionicons name="add" size={28} color="#FFFFFF" />
+      </TouchableOpacity>
     </View>
   )
 }

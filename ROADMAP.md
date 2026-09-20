@@ -91,12 +91,12 @@ Do these before adding several large features.
 
 **Goal:** Anything fundamental that exists on Web should work on App.
 
-- [ ] Mobile onboarding
-- [ ] Mobile authentication flow
+- [x] Mobile onboarding
+- [x] Mobile authentication flow
 - [ ] Mobile OAuth/auth integration
-- [ ] Mobile activity feed
-- [ ] Mobile activity details
-- [ ] Mobile upload/import flow if appropriate for the platform
+- [x] Mobile activity feed
+- [x] Mobile activity details
+- [x] Mobile upload/import flow if appropriate for the platform
 - [ ] Verify recorder → saved activity → activity details flow
 - [ ] Verify map interactions
 - [ ] Verify graphs on real devices
