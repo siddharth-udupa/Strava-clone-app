@@ -36,9 +36,7 @@ export default function RecorderScreen() {
 	const insets = useSafeAreaInsets();
 
 	const [activityType, setActivityType] = useState<ActivityTypeOption>("run");
-	const [providerId, setProviderId] = useState<TileProviderId>(
-		DEFAULT_TILE_PROVIDER,
-	);
+	const [providerId, setProviderId] = useState<TileProviderId>(DEFAULT_TILE_PROVIDER);
 	const [is3dMode, setIs3dMode] = useState(false);
 	const [isLayerPickerOpen, setIsLayerPickerOpen] = useState(false);
 	const [isActivityTypeModalOpen, setIsActivityTypeModalOpen] = useState(false);
@@ -60,7 +58,7 @@ export default function RecorderScreen() {
 		startRecording,
 		pauseRecording,
 		resumeRecording,
-		stopAndSaveRecording,
+		finishRecordingSession,
 		requestLocationPermissions,
 	} = useActivityRecorder(recorderType);
 
@@ -73,12 +71,8 @@ export default function RecorderScreen() {
 	};
 
 	const handleFinish = async () => {
-		const saved = await stopAndSaveRecording();
-		if (saved) {
-			const distKm = metersToDistance(saved.distanceMeters, "metric");
-			Alert.alert("Activity Saved!", `Total distance: ${distKm.toFixed(2)} km`);
-			handleGoBack();
-		}
+		await finishRecordingSession();
+		router.push("/(app)/recorder/save" as any);
 	};
 
 	const handleRecenterLocation = () => {
@@ -89,9 +83,7 @@ export default function RecorderScreen() {
 		}
 	};
 
-	const formattedDistance = metersToDistance(distanceMeters, "metric").toFixed(
-		2,
-	);
+	const formattedDistance = metersToDistance(distanceMeters, "metric").toFixed(2);
 	const formattedTime = formatDurationShort(elapsedSeconds);
 	const formattedPace = formatPace(elapsedSeconds, distanceMeters, "min/km");
 	const formattedSpeed = mpsToSpeed(currentSpeedMps, "km/h").toFixed(1);

@@ -19,6 +19,7 @@ export type ActivitySummary = {
   id: string
   type: "run" | "ride" | "hike" | "walk"
   title: string
+  description?: string
   startedAt: number
   endedAt?: number
   distanceMeters: number

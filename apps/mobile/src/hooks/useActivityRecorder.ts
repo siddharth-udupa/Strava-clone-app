@@ -384,22 +384,41 @@ export function useActivityRecorder(activityType: "run" | "ride" = "run") {
     else setData((prev) => ({ ...prev, status: "recording" }))
   }
 
-  const stopAndSaveRecording = async (): Promise<ActivitySummary | null> => {
+  const finishRecordingSession = async () => {
     try {
       setData((prev) => ({ ...prev, status: "finished" }))
       await stopBackgroundLocationTask()
+      const session = (await getActiveSession()) || sessionRef.current
+      return session
+    } catch (err: any) {
+      console.error("Finish activity session error:", err)
+      setData((prev) => ({ ...prev, errorMsg: "Error finishing activity recording." }))
+      return null
+    }
+  }
 
-      // Read final session from disk (fallback to in-memory ref)
+  const saveRecordedActivity = async (customDetails?: {
+    title?: string
+    description?: string
+    activityType?: "run" | "ride" | "hike" | "walk" | string
+  }): Promise<ActivitySummary | null> => {
+    try {
+      await stopBackgroundLocationTask()
+
       const session = (await getActiveSession()) || sessionRef.current
       const finalPoints = session?.points || data.points
       const finalDistance = session?.distanceMeters || data.distanceMeters
       const finalDuration = session ? computeElapsedSeconds(session) : data.elapsedSeconds
       const finalMaxSpeed = session?.maxSpeedMps || data.maxSpeedMps
+      const selectedType = customDetails?.activityType || session?.type || activityType
+
+      const defaultTitle = selectedType === "run" ? "Morning Run" : selectedType === "ride" ? "Ride" : "Activity"
 
       const summary: ActivitySummary = {
         id: session?.id || `act_${Date.now()}`,
-        type: activityType,
-        title: activityType === "run" ? "Morning Run" : "Ride",
+        type: selectedType as any,
+        title: customDetails?.title?.trim() || defaultTitle,
+        description: customDetails?.description?.trim() || undefined,
         startedAt: session?.startedAt || Date.now(),
         endedAt: Date.now(),
         distanceMeters: finalDistance,
@@ -427,10 +446,26 @@ export function useActivityRecorder(activityType: "run" | "ride" = "run") {
 
       return summary
     } catch (err: any) {
-      console.error("Stop activity error:", err)
-      setData((prev) => ({ ...prev, errorMsg: "Error stopping activity recording." }))
+      console.error("Save activity error:", err)
+      setData((prev) => ({ ...prev, errorMsg: "Error saving activity recording." }))
       return null
     }
+  }
+
+  const discardRecordingSession = async (): Promise<void> => {
+    try {
+      await stopBackgroundLocationTask()
+      await clearActiveSession()
+      sessionRef.current = null
+      setData((prev) => ({ ...INITIAL_DATA, locationStatus: prev.locationStatus, currentPoint: prev.currentPoint }))
+    } catch (err: any) {
+      console.error("Discard activity error:", err)
+    }
+  }
+
+  const stopAndSaveRecording = async (): Promise<ActivitySummary | null> => {
+    await finishRecordingSession()
+    return saveRecordedActivity()
   }
 
   // ===========================================================================
@@ -452,6 +487,9 @@ export function useActivityRecorder(activityType: "run" | "ride" = "run") {
     startRecording,
     pauseRecording,
     resumeRecording,
+    finishRecordingSession,
+    saveRecordedActivity,
+    discardRecordingSession,
     stopAndSaveRecording,
   }
 }
