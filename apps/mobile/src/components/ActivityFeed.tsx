@@ -15,7 +15,23 @@ interface ActivityFeedProps {
   error?: string | null
 }
 
-const API_URL = process.env.EXPO_PUBLIC_API_URL ?? "http://192.168.31.240:3000"
+const API_URL = process.env.EXPO_PUBLIC_API_URL!
+
+// Module-level cache for user preferences to prevent fetching on every tab switch
+let cachedPreferences: PreferencesType | null = null
+
+const DEFAULT_PREFERENCES: PreferencesType = {
+  updatedAt: null,
+  userId: "",
+  onBoarded: true,
+  theme: "light",
+  distanceUnit: "metric",
+  elevationUnit: "meters",
+  paceUnit: "min/km",
+  speedUnit: "km/h",
+  weightUnit: "kg",
+  timeFormat: "12h",
+}
 
 export default function ActivityFeed({
   user,
@@ -26,35 +42,29 @@ export default function ActivityFeed({
   isLoading = false,
   error = null,
 }: ActivityFeedProps) {
-
-  const [preferences, setPreference] = useState<PreferencesType>({
-    updatedAt: null,
-    userId: "",
-    onBoarded: true,
-    theme: "light",
-    distanceUnit: "metric",
-    elevationUnit: "meters",
-    paceUnit: "min/km",
-    speedUnit: "km/h",
-    weightUnit: "kg",
-    timeFormat: "12h",
-  })
+  const [preferences, setPreference] = useState<PreferencesType>(
+    cachedPreferences ?? DEFAULT_PREFERENCES
+  )
 
   useEffect(() => {
-    async function fetchPrefernences() {
+    if (cachedPreferences) return
+
+    async function fetchPreferences() {
       try {
-        const res = await authClient.$fetch<{ data: PreferencesType }>(
-          `${API_URL}/api/activities/`
+        const res = await authClient.$fetch<PreferencesType>(
+          `${API_URL}/api/preferences`
         )
         if (res?.data) {
-          setPreference(res.data.data)
+          cachedPreferences = res.data
+          setPreference(res.data)
         }
       } catch (err) {
         console.error("Using default preferences due to fetch error:", err)
       }
     }
-    fetchPrefernences()
+    fetchPreferences()
   }, [])
+
 
   if (isLoading && activities.length === 0) {
     return (

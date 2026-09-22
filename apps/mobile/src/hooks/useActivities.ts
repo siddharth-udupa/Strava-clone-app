@@ -7,56 +7,85 @@ const API_URL = process.env.EXPO_PUBLIC_API_URL!
 // Global listener registry so all active useActivities hooks update instantly when an activity is deleted anywhere
 const deleteListeners = new Set<(activityId: string) => void>()
 
+// Module-level cache so fetched activities persist across component unmounts and tab navigation
+let cachedUserId: string | null = null
+let cachedActivities: ActivityCardType[] | null = null
+
 /**
  * Remove an activity by ID from all active `useActivities` caches/states across the app.
  */
 export function removeActivityFromCache(activityId: string) {
+  if (cachedActivities) {
+    cachedActivities = cachedActivities.filter(
+      (a) => a.activityId !== activityId && (a as any).id !== activityId
+    )
+  }
   deleteListeners.forEach((listener) => listener(activityId))
 }
 
+/**
+ * Invalidate the in-memory activities cache so next fetch gets fresh data from server.
+ */
+export function invalidateActivitiesCache() {
+  cachedUserId = null
+  cachedActivities = null
+}
+
 export function useActivities(userId: string) {
-  const [activities, setActivities] = useState<ActivityCardType[]>([])
-  const [isLoading, setIsLoading] = useState<boolean>(true)
+  const isCacheValid = cachedUserId === userId && cachedActivities !== null
+  const [activities, setActivities] = useState<ActivityCardType[]>(
+    isCacheValid ? (cachedActivities as ActivityCardType[]) : []
+  )
+  const [isLoading, setIsLoading] = useState<boolean>(!isCacheValid)
   const [refreshing, setRefreshing] = useState<boolean>(false)
   const [error, setError] = useState<string | null>(null)
 
-  const fetchActivities = useCallback(async (isPullToRefresh = false) => {
-    if (!userId) {
-      setIsLoading(false)
-      return
-    }
+  const fetchActivities = useCallback(
+    async (isPullToRefresh = false) => {
+      if (!userId) {
+        setIsLoading(false)
+        return
+      }
 
-    if (isPullToRefresh) {
-      setRefreshing(true)
-    } else {
-      setIsLoading(true)
-    }
-    setError(null)
+      if (isPullToRefresh) {
+        setRefreshing(true)
+      } else {
+        if (cachedUserId !== userId || cachedActivities === null) {
+          setIsLoading(true)
+        }
+      }
+      setError(null)
 
-    try {
-      const res = await authClient.$fetch<ActivityCardType[]>(
-        `${API_URL}/api/activities?userId=${userId}`
-      )
-      if (res.error) {
-        throw new Error(
-          res.error.message || `Failed to fetch activities (${res.error.status ?? "error"})`
+      try {
+        const res = await authClient.$fetch<ActivityCardType[]>(
+          `${API_URL}/api/activities?userId=${userId}`
         )
+        if (res.error) {
+          throw new Error(
+            res.error.message || `Failed to fetch activities (${res.error.status ?? "error"})`
+          )
+        }
+        if (res.data) {
+          cachedUserId = userId
+          cachedActivities = res.data
+          setActivities(res.data)
+        }
+      } catch (err) {
+        console.error("Error fetching activities:", err)
+        setError(err instanceof Error ? err.message : "An error occurred while fetching activities")
+      } finally {
+        setIsLoading(false)
+        setRefreshing(false)
       }
-      if (res.data) {
-        setActivities(res.data)
-      }
-    } catch (err) {
-      console.error("Error fetching activities:", err)
-      setError(err instanceof Error ? err.message : "An error occurred while fetching activities")
-    } finally {
-      setIsLoading(false)
-      setRefreshing(false)
-    }
-  }, [userId])
+    },
+    [userId]
+  )
 
   useEffect(() => {
-    fetchActivities()
-  }, [fetchActivities])
+    if (cachedUserId !== userId || cachedActivities === null) {
+      fetchActivities(false)
+    }
+  }, [userId, fetchActivities])
 
   // Subscribe to deletion events so deleted activities get filtered out of state immediately
   useEffect(() => {
@@ -90,4 +119,5 @@ export function useActivities(userId: string) {
     refetch,
   }
 }
+
 

@@ -97,7 +97,7 @@ Do these before adding several large features.
 - [x] Mobile activity feed
 - [x] Mobile activity details
 - [x] Mobile upload/import flow if appropriate for the platform
-- [ ] Verify recorder → saved activity → activity details flow
+- [x] Verify recorder → saved activity → activity details flow
 - [ ] Verify map interactions
 - [ ] Verify graphs on real devices
 

@@ -16,6 +16,7 @@ import type { DistanceUnit, ElevationUnit } from "@repo/units"
 import { durationToSeconds } from "@repo/units"
 import type { ManualActivityInput } from "@repo/validation"
 import { authClient } from "@/lib/auth-client"
+import { invalidateActivitiesCache } from "@/hooks/useActivities"
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 
@@ -383,6 +384,8 @@ export default function ManualUploadScreen() {
         Alert.alert("Error", formatErrorMessage(res.error))
         return
       }
+
+      invalidateActivitiesCache()
 
       Alert.alert("Activity Saved!", "Your activity has been logged successfully.", [
         {
