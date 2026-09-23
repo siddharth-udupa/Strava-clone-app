@@ -26,10 +26,9 @@ import {
   computeElapsedSeconds,
   type ActiveSession,
 } from "@/lib/activeSessionStorage"
+import { ActivityTypes } from "@repo/types"
 
-type SportType = "run" | "ride" | "walk" | "hike"
-
-const SPORTS: { type: SportType; label: string; icon: React.ComponentProps<typeof Ionicons>["name"] }[] = [
+const SPORTS: { type: ActivityTypes; label: string; icon: React.ComponentProps<typeof Ionicons>["name"] }[] = [
   { type: "run", label: "Run", icon: "walk" },
   { type: "ride", label: "Ride", icon: "bicycle" },
   { type: "walk", label: "Walk", icon: "footsteps" },
@@ -63,7 +62,7 @@ export default function SaveActivityScreen() {
   const [loadingSession, setLoadingSession] = useState(true)
   const [isSaving, setIsSaving] = useState(false)
 
-  const [sportType, setSportType] = useState<SportType>("run")
+  const [sportType, setSportType] = useState<ActivityTypes>("run")
   const [title, setTitle] = useState("")
   const [description, setDescription] = useState("")
 
@@ -78,7 +77,7 @@ export default function SaveActivityScreen() {
       if (isMounted) {
         if (sess) {
           setSession(sess)
-          const initialSport = (sess.type as SportType) || "run"
+          const initialSport = (sess.type as ActivityTypes) || "run"
           setSportType(initialSport)
           setTitle(getDefaultTitle(initialSport, sess.startedAt))
         } else {
@@ -93,7 +92,7 @@ export default function SaveActivityScreen() {
   }, [])
 
   // When sport selection changes, update title if user hasn't heavily customized it
-  const handleSelectSport = (type: SportType) => {
+  const handleSelectSport = (type: ActivityTypes) => {
     setSportType(type)
     setTitle(getDefaultTitle(type, session?.startedAt))
   }

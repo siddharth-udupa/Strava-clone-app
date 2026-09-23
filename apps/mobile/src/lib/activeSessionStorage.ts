@@ -1,6 +1,6 @@
 import AsyncStorage from "@react-native-async-storage/async-storage"
 import { haversineDistance } from "@repo/gpx"
-import type { ActivityPoint } from "@repo/types"
+import type { ActivityPoint, ActivityTypes } from "@repo/types"
 
 export function isValidLocationPoint(point: ActivityPoint): boolean {
   if (point.accuracy !== null && point.accuracy > 100) return false
@@ -12,7 +12,7 @@ export type ActiveSessionStatus = "recording" | "paused"
 
 export type ActiveSession = {
   id: string
-  type: "run" | "ride" | "hike" | "walk"
+  type: ActivityTypes
   status: ActiveSessionStatus
   startedAt: number
   pausedAt: number | null
@@ -27,7 +27,7 @@ export type ActiveSession = {
 const ACTIVE_SESSION_KEY = "@strava_clone_active_session_v1"
 
 export async function createActiveSession(
-  type: "run" | "ride" | "hike" | "walk" = "run",
+  type: ActivityTypes = "run",
   isBackgroundActive: boolean = false
 ): Promise<ActiveSession> {
   const session: ActiveSession = {

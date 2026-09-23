@@ -1,12 +1,12 @@
 import React from "react"
 import { View, Text, TouchableOpacity } from "react-native"
 import { Ionicons, MaterialCommunityIcons } from "@expo/vector-icons"
+import { ActivityTypes } from "@repo/types"
 
-export type ActivityTypeOption = "run" | "ride" | "walk" | "workout"
 
 export type BottomControlPanelProps = {
   status: "idle" | "recording" | "paused" | "finished"
-  activityType: ActivityTypeOption
+  activityType: ActivityTypes
   selectedRoute: string | null
   bottomInset: number
   onOpenActivityModal: () => void
@@ -29,27 +29,23 @@ export default function BottomControlPanel({
   onFinishRecording,
   onOpenRouteModal,
 }: BottomControlPanelProps) {
-  const getActivityIcon = (type: ActivityTypeOption) => {
+  const getActivityIcon = (type: ActivityTypes) => {
     switch (type) {
       case "ride":
         return <Ionicons name="bicycle" size={32} color="#FC5200" />
       case "walk":
         return <Ionicons name="walk" size={32} color="#FC5200" />
-      case "workout":
-        return <Ionicons name="fitness" size={30} color="#FC5200" />
       default:
         return <MaterialCommunityIcons name="run" size={34} color="#FC5200" />
     }
   }
 
-  const getActivityLabel = (type: ActivityTypeOption) => {
+  const getActivityLabel = (type: ActivityTypes) => {
     switch (type) {
       case "ride":
         return "Ride"
       case "walk":
         return "Walk"
-      case "workout":
-        return "Workout"
       default:
         return "Run"
     }

@@ -3,9 +3,10 @@
 import { useState } from "react"
 import { useRouter } from "next/navigation"
 import { AlertCircle, CheckCircle2, Loader2 } from "lucide-react"
+import { ActivityTypes } from "@repo/types"
 
-const SPORTS = [
-  "Run", "Ride", "Swim", "Walk", "Hike", "Other"
+const SPORTS: ActivityTypes[] = [
+  "run", "ride", "swim", "walk", "hike"
 ]
 
 export default function Manual() {
@@ -100,7 +101,7 @@ export default function Manual() {
     return "Failed to save activity."
   }
 
-  const submitHandler = async (e: React.SubmitEvent) => {
+  const submitHandler = async (e: React.SubmitEvent<HTMLFormElement>) => {
     e.preventDefault()
 
     if (!isFormValid) {

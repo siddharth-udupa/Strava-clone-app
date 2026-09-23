@@ -1,11 +1,12 @@
 import React from "react"
 import { View, Text, Image, TouchableOpacity } from "react-native"
 import { MaterialCommunityIcons } from "@expo/vector-icons"
+import { ActivityTypes } from "@repo/types"
 
 export type ActivityAthleteHeaderProps = {
   userName: string
   createdAt: string | Date
-  activityType: string
+  activityType: ActivityTypes
   title?: string | null
   description?: string | null
   avatarUrl?: string
@@ -28,11 +29,11 @@ export default function ActivityAthleteHeader({
     year: "numeric",
   })
 
-  const getIconName = (type: string) => {
+  const getIconName = (type: ActivityTypes) => {
     switch (type) {
-      case "Ride":
+      case "ride":
         return "bike"
-      case "Hike":
+      case "hike":
         return "hiking"
       default:
         return "run"

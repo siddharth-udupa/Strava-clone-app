@@ -1,12 +1,12 @@
 import React from "react"
 import { View, Text, TouchableOpacity, Modal } from "react-native"
 import { Ionicons } from "@expo/vector-icons"
-import type { ActivityTypeOption } from "./BottomControlPanel"
+import { ActivityTypes } from "@repo/types"
 
 export type ActivityTypeModalProps = {
   visible: boolean
-  activityType: ActivityTypeOption
-  onSelectActivity: (type: ActivityTypeOption) => void
+  activityType: ActivityTypes
+  onSelectActivity: (type: ActivityTypes) => void
   onClose: () => void
 }
 
@@ -16,11 +16,10 @@ export default function ActivityTypeModal({
   onSelectActivity,
   onClose,
 }: ActivityTypeModalProps) {
-  const options: Array<{ type: ActivityTypeOption; label: string; icon: keyof typeof Ionicons.glyphMap }> = [
+  const options: Array<{ type: ActivityTypes; label: string; icon: keyof typeof Ionicons.glyphMap }> = [
     { type: "run", label: "Run", icon: "footsteps" },
     { type: "ride", label: "Ride", icon: "bicycle" },
     { type: "walk", label: "Walk", icon: "walk" },
-    { type: "workout", label: "Workout", icon: "fitness" },
   ]
 
   return (

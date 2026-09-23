@@ -97,7 +97,7 @@ export default function Navbar() {
     setMobileExpandedSection((prev) => (prev === name ? null : name))
   }
 
-  const handleSearchSubmit = (e: React.SubmitEvent) => {
+  const handleSearchSubmit = (e: React.SubmitEvent<HTMLFormElement>) => {
     e.preventDefault()
     if (searchQuery.trim()) {
       router.push(`/dashboard?search=${encodeURIComponent(searchQuery.trim())}`)
@@ -304,7 +304,7 @@ export default function Navbar() {
                     className="w-8 h-8 rounded-full object-cover border border-gray-200"
                   />
                 ) : (
-                  <div className="w-8 h-8 rounded-full bg-gradient-to-br from-orange-400 to-stravaorange text-white text-xs font-bold flex items-center justify-center border border-gray-200">
+                  <div className="w-8 h-8 rounded-full bg-linear-to-br from-orange-400 to-stravaorange text-white text-xs font-bold flex items-center justify-center border border-gray-200">
                     {userInitials}
                   </div>
                 )}
@@ -368,7 +368,7 @@ export default function Navbar() {
                 title="Add activity"
                 aria-label="Upload or Create Activity"
               >
-                <Plus className="w-4 h-4 stroke-[3]" />
+                <Plus className="w-4 h-4 stroke-3" />
               </button>
 
               {activeDropdown === "plus" && (

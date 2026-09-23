@@ -17,7 +17,7 @@ export type ActivityPoint = {
 
 export type ActivitySummary = {
   id: string
-  type: "run" | "ride" | "hike" | "walk"
+  type: ActivityTypes
   title: string
   description?: string
   startedAt: number
@@ -29,3 +29,5 @@ export type ActivitySummary = {
   maxSpeedMps: number
   points: ActivityPoint[]
 }
+
+export type ActivityTypes = "run" | "walk" | "ride" | "hike" | "swim"

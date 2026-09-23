@@ -10,6 +10,7 @@ import {
 	metersToDistance,
 	mpsToSpeed,
 } from "@repo/units";
+import type { ActivityTypes } from "@repo/types";
 import { useRouter } from "expo-router";
 import { useState } from "react";
 import {
@@ -23,9 +24,7 @@ import {
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import Map from "@/components/map/Map";
 import ActivityTypeModal from "@/components/ui/recorder/ActivityTypeModal";
-import BottomControlPanel, {
-	type ActivityTypeOption,
-} from "@/components/ui/recorder/BottomControlPanel";
+import BottomControlPanel from "@/components/ui/recorder/BottomControlPanel";
 import FloatingMapControls from "@/components/ui/recorder/FloatingMapControls";
 import LiveMetricsCard from "@/components/ui/recorder/LiveMetricsCard";
 import RouteSelectionModal from "@/components/ui/recorder/RouteSelectionModal";
@@ -35,7 +34,7 @@ export default function RecorderScreen() {
 	const router = useRouter();
 	const insets = useSafeAreaInsets();
 
-	const [activityType, setActivityType] = useState<ActivityTypeOption>("run");
+	const [activityType, setActivityType] = useState<ActivityTypes>("run");
 	const [providerId, setProviderId] = useState<TileProviderId>(DEFAULT_TILE_PROVIDER);
 	const [is3dMode, setIs3dMode] = useState(false);
 	const [isLayerPickerOpen, setIsLayerPickerOpen] = useState(false);

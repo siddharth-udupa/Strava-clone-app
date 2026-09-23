@@ -98,8 +98,8 @@ Do these before adding several large features.
 - [x] Mobile activity details
 - [x] Mobile upload/import flow if appropriate for the platform
 - [x] Verify recorder → saved activity → activity details flow
-- [ ] Verify map interactions
-- [ ] Verify graphs on real devices
+- [x] Verify map interactions
+- [x] Verify graphs on real devices
 
 ### Definition of done
 

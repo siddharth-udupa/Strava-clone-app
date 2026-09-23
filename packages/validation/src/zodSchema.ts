@@ -1,5 +1,8 @@
 import { z } from "zod"
 
+// Lowercase activity types — keep in sync with ActivityTypes in @repo/types/src/activity.ts
+export const ActivityTypesSchema = z.enum(["run", "walk", "ride", "hike", "swim"])
+
 export const CreateActivitySchema = z.object({
   distance: z.number().nonnegative(),
   duration: z.object({
@@ -39,7 +42,7 @@ export const MobileActivityPointSchema = z.object({
 
 export const MobileActivitySchema = z.object({
   id: z.string().optional(),
-  type: z.string().min(1),
+  type: ActivityTypesSchema,
   title: z.string().min(1).max(100),
   description: z.string().max(1000).optional().nullable(),
   startedAt: z.number(),

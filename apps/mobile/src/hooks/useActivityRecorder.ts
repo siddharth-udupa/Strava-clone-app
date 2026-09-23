@@ -17,7 +17,7 @@ import {
   clearActiveSession,
   computeElapsedSeconds,
 } from "../lib/activeSessionStorage"
-import type { ActivitySummary, ActivityPoint } from "@repo/types"
+import type { ActivitySummary, ActivityPoint, ActivityTypes } from "@repo/types"
 import { authClient } from "../lib/auth-client"
 
 // ---------------------------------------------------------------------------
@@ -106,7 +106,7 @@ const API_URL = process.env.EXPO_PUBLIC_API_URL!
 // ---------------------------------------------------------------------------
 // Hook
 // ---------------------------------------------------------------------------
-export function useActivityRecorder(activityType: "run" | "ride" = "run") {
+export function useActivityRecorder(activityType: ActivityTypes) {
   const [data, setData] = useState<RecorderData>(INITIAL_DATA)
   const sessionRef = useRef<ActiveSession | null>(null)
   const timerRef = useRef<NodeJS.Timeout | null>(null)
@@ -400,7 +400,7 @@ export function useActivityRecorder(activityType: "run" | "ride" = "run") {
   const saveRecordedActivity = async (customDetails?: {
     title?: string
     description?: string
-    activityType?: "run" | "ride" | "hike" | "walk" | string
+    activityType?: ActivityTypes
   }): Promise<ActivitySummary | null> => {
     try {
       await stopBackgroundLocationTask()

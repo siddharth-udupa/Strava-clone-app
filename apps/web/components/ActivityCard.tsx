@@ -153,7 +153,7 @@ export default function ActivityCard({
 
       {/* Activity Title & Sport Icon */}
       <div className="flex items-start gap-3 my-3">
-        <div className="mt-0.5 flex-shrink-0 text-gray-900">
+        <div className="mt-0.5 shrink-0 text-gray-900">
           {getSportIcon(activities.type)}
         </div>
         <div>
