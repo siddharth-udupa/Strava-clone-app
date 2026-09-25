@@ -1,193 +1,334 @@
-import { View, Text, TouchableOpacity, Image } from "react-native"
-import { Ionicons, MaterialCommunityIcons } from "@expo/vector-icons"
-import { useRouter } from "expo-router"
-import type { ActivityCardType, PreferencesType } from "@repo/types"
-import ActivityMap from "./map/Map"
+import { Ionicons, MaterialCommunityIcons } from "@expo/vector-icons";
+import type { ActivityCardType, PreferencesType } from "@repo/types";
 import {
-  metersToDistance,
-  metersToElevation,
-  formatDateAndTime,
-  formatDurationShort,
-  formatPace,
-  mpsToSpeed,
-} from "@repo/units"
-import type { User } from "@/lib/auth-client"
+	formatDateAndTime,
+	formatDurationShort,
+	formatPace,
+	metersToDistance,
+	metersToElevation,
+	mpsToSpeed,
+} from "@repo/units";
+import { Image } from "expo-image";
+import { useRouter } from "expo-router";
+import { cssInterop } from "nativewind";
+import { useMemo } from "react";
+import { Text, TouchableOpacity, View } from "react-native";
+import type { User } from "@/lib/auth-client";
+import ActivityMap from "./map/Map";
+
+// Allow `className` on the third-party components used in this card.
+cssInterop(Image, { className: "style" });
+cssInterop(Ionicons, { className: "style" });
+cssInterop(MaterialCommunityIcons, { className: "style" });
 
 interface ActivityCardProps {
-  activity: ActivityCardType
-  preferences: PreferencesType
-  user: User
+	activity: ActivityCardType;
+	preferences: PreferencesType;
+	user: User;
 }
 
-const getSportIcon = (type: string) => {
-  const normalized = type?.toLowerCase() || ""
-  if (normalized.includes("run") || normalized.includes("walk")) {
-    return <MaterialCommunityIcons name="run" size={24} color="#111827" />
-  }
-  if (normalized.includes("ride") || normalized.includes("cycle") || normalized.includes("bike")) {
-    return <MaterialCommunityIcons name="bike" size={24} color="#111827" />
-  }
-  if (normalized.includes("hike")) {
-    return <MaterialCommunityIcons name="hiking" size={24} color="#111827" />
-  }
-  return <MaterialCommunityIcons name="lightning-bolt" size={24} color="#111827" />
-}
+const getSportIcon = (type: string, size = 22) => {
+	const normalized = type?.toLowerCase() || "";
 
-export default function ActivtyCard({ activity, preferences, user }: ActivityCardProps) {
-  const router = useRouter()
+	if (normalized.includes("run") || normalized.includes("walk")) {
+		return (
+			<MaterialCommunityIcons name="run" size={size} className="text-strava" />
+		);
+	}
+	if (
+		normalized.includes("ride") ||
+		normalized.includes("cycle") ||
+		normalized.includes("bike")
+	) {
+		return (
+			<MaterialCommunityIcons name="bike" size={size} className="text-strava" />
+		);
+	}
+	if (normalized.includes("hike")) {
+		return (
+			<MaterialCommunityIcons
+				name="hiking"
+				size={size}
+				className="text-strava"
+			/>
+		);
+	}
+	if (normalized.includes("swim")) {
+		return (
+			<MaterialCommunityIcons name="swim" size={size} className="text-strava" />
+		);
+	}
+	return (
+		<MaterialCommunityIcons
+			name="lightning-bolt"
+			size={size}
+			className="text-strava"
+		/>
+	);
+};
 
-  const handlePressCard = () => {
-    if (activity.activityId) {
-      router.push(`/activities/${activity.activityId}` as any)
-    }
-  }
+const getSportLabel = (type: string) => {
+	const normalized = type?.toLowerCase() || "";
+	if (normalized.includes("run")) return "Run";
+	if (normalized.includes("walk")) return "Walk";
+	if (
+		normalized.includes("ride") ||
+		normalized.includes("cycle") ||
+		normalized.includes("bike")
+	) {
+		return "Ride";
+	}
+	if (normalized.includes("hike")) return "Hike";
+	if (normalized.includes("swim")) return "Swim";
+	return "Activity";
+};
 
-  const { date: formattedDate, time: formattedTime } = formatDateAndTime(
-    activity.createdAt,
-    preferences?.timeFormat
-  )
+export default function ActivityCard({
+	activity,
+	preferences,
+	user,
+}: ActivityCardProps) {
+	const router = useRouter();
 
-  const isRunOrWalk = ["run", "walk", "hike"].some((t) =>
-    activity.type?.toLowerCase().includes(t)
-  )
-  const isRide = ["ride", "cycle", "bike"].some((t) =>
-    activity.type?.toLowerCase().includes(t)
-  )
+	const { date: formattedDate, time: formattedTime } = formatDateAndTime(
+		activity.createdAt,
+		preferences?.timeFormat,
+	);
 
-  const distanceVal = metersToDistance(activity.distance, preferences?.distanceUnit)
-  const distanceUnitLabel = preferences?.distanceUnit === "imperial" ? "mi" : "km"
+	const isRunOrWalk = ["run", "walk", "hike"].some((type) =>
+		activity.type?.toLowerCase().includes(type),
+	);
+	const isRide = ["ride", "cycle", "bike"].some((type) =>
+		activity.type?.toLowerCase().includes(type),
+	);
 
-  const durationStr = formatDurationShort(activity.duration)
+	const distanceVal = metersToDistance(
+		activity.distance,
+		preferences?.distanceUnit,
+	);
+	const distanceUnitLabel =
+		preferences?.distanceUnit === "imperial" ? "mi" : "km";
+	const durationStr = formatDurationShort(activity.duration);
 
-  let elev = { name: "Elev Gain", value: activity.elevationGain }
-  if (activity.elevationLoss > activity.elevationGain) {
-    elev = { name: "Elev Loss", value: activity.elevationLoss }
-  }
+	let elevation = { label: "Elev gain", value: activity.elevationGain };
+	if (activity.elevationLoss > activity.elevationGain) {
+		elevation = { label: "Elev loss", value: activity.elevationLoss };
+	}
 
-  let middleStatLabel = elev.name
-  let middleStatVal = `${metersToElevation(elev.value, preferences?.elevationUnit)} ${preferences?.elevationUnit === "feet" ? "ft" : "m"}`
+	let secondaryStatLabel = elevation.label;
+	let secondaryStatValue = `${metersToElevation(elevation.value, preferences?.elevationUnit)} ${
+		preferences?.elevationUnit === "feet" ? "ft" : "m"
+	}`;
 
-  if (isRunOrWalk && activity.distance > 0) {
-    middleStatLabel = "Pace"
-    middleStatVal = formatPace(
-      activity.duration,
-      activity.distance,
-      preferences?.paceUnit ?? "min/km"
-    )
-  } else if (isRide && activity.distance > 0 && activity.duration > 0) {
-    middleStatLabel = "Speed"
-    const avgMps = activity.distance / activity.duration
-    const speedVal = mpsToSpeed(avgMps, preferences?.speedUnit ?? "km/h")
-    const speedUnitLabel =
-      preferences?.speedUnit === "mph"
-        ? "mph"
-        : preferences?.speedUnit === "m/s"
-          ? "m/s"
-          : "km/h"
-    middleStatVal = `${speedVal} ${speedUnitLabel}`
-  }
+	if (isRunOrWalk && activity.distance > 0) {
+		secondaryStatLabel = "Avg pace";
+		secondaryStatValue = formatPace(
+			activity.duration,
+			activity.distance,
+			preferences?.paceUnit ?? "min/km",
+		);
+	} else if (isRide && activity.distance > 0 && activity.duration > 0) {
+		secondaryStatLabel = "Avg speed";
+		const averageMps = activity.distance / activity.duration;
+		const speedValue = mpsToSpeed(averageMps, preferences?.speedUnit ?? "km/h");
+		const speedUnit =
+			preferences?.speedUnit === "mph"
+				? "mph"
+				: preferences?.speedUnit === "m/s"
+					? "m/s"
+					: "km/h";
+		secondaryStatValue = `${speedValue} ${speedUnit}`;
+	}
 
-  return (
-    <View className="bg-white border-y border-gray-200 my-1 py-4 px-4">
-      {/* Header Row: Avatar + User Details */}
-      <TouchableOpacity
-        onPress={handlePressCard}
-        activeOpacity={0.8}
-        className="flex-row items-center mb-3"
-      >
-        {user?.image ? (
-          <Image
-            source={{ uri: user.image }}
-            className="w-11 h-11 rounded-full bg-gray-200"
-          />
-        ) : (
-          <Ionicons name="person-circle-outline" size={44} color="#9CA3AF" />
-        )}
-        <View className="ml-3 flex-1 justify-center">
-          <Text className="text-gray-900 font-bold text-base leading-snug">
-            {user?.name || "User"}
-          </Text>
-          <Text className="text-gray-500 text-xs font-normal mt-0.5">
-            {formattedDate} at {formattedTime} • Strava App
-            {activity.location ? ` • ${activity.location}` : ""}
-          </Text>
-        </View>
-      </TouchableOpacity>
+	const stats = useMemo(
+		() => [
+			{ label: "Distance", value: `${distanceVal} ${distanceUnitLabel}` },
+			{ label: secondaryStatLabel, value: secondaryStatValue },
+			{ label: "Moving time", value: durationStr },
+		],
+		[
+			distanceVal,
+			distanceUnitLabel,
+			durationStr,
+			secondaryStatLabel,
+			secondaryStatValue,
+		],
+	);
 
-      {/* Activity Title & Sport Icon */}
-      <TouchableOpacity
-        onPress={handlePressCard}
-        activeOpacity={0.8}
-        className="flex-row items-start my-2"
-      >
-        <View className="mt-0.5 mr-3">
-          {getSportIcon(activity.type)}
-        </View>
-        <View className="flex-1">
-          <Text className="text-gray-900 font-bold text-xl leading-tight">
-            {activity.title || "Untitled Activity"}
-          </Text>
-          {activity.description ? (
-            <Text className="text-gray-600 text-sm font-normal mt-1">
-              {activity.description}
-            </Text>
-          ) : null}
-        </View>
-      </TouchableOpacity>
+	const handlePressCard = () => {
+		if (activity.activityId) {
+			router.push(`/activities/${activity.activityId}`);
+		}
+	};
 
-      {/* Stats 3-Column Grid with Vertical Dividers */}
-      <View className="my-3 flex-row items-center">
-        <View className="pr-4 border-r border-gray-200">
-          <Text className="text-gray-500 text-xs font-normal mb-0.5">Distance</Text>
-          <Text className="text-gray-900 text-xl font-bold tracking-tight">
-            {distanceVal} <Text className="text-base font-normal">{distanceUnitLabel}</Text>
-          </Text>
-        </View>
-        <View className="px-4 border-r border-gray-200">
-          <Text className="text-gray-500 text-xs font-normal mb-0.5">{middleStatLabel}</Text>
-          <Text className="text-gray-900 text-xl font-bold tracking-tight">
-            {middleStatVal}
-          </Text>
-        </View>
-        <View className="pl-4">
-          <Text className="text-gray-500 text-xs font-normal mb-0.5">Time</Text>
-          <Text className="text-gray-900 text-xl font-bold tracking-tight">
-            {durationStr}
-          </Text>
-        </View>
-      </View>
+	return (
+		<View className="w-full max-w-[680px] self-center mx-2.5 sm:mx-4 my-2 rounded-3xl border border-gray-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-4 sm:p-5 md:p-6 shadow-[0_8px_20px_-14px_rgba(15,23,42,0.45)] dark:shadow-[0_10px_24px_-18px_rgba(0,0,0,0.9)]">
+			<TouchableOpacity
+				onPress={handlePressCard}
+				activeOpacity={0.75}
+				accessibilityRole="button"
+				accessibilityLabel={`View activity by ${user?.name || "user"}`}
+				className="w-full flex-row items-center"
+			>
+				{user?.image ? (
+					<Image
+						source={user.image}
+						contentFit="cover"
+						transition={150}
+						className="size-12 rounded-full bg-gray-200 dark:bg-slate-800"
+						accessibilityLabel={`${user?.name || "User"} profile photo`}
+					/>
+				) : (
+					<View className="size-12 rounded-full items-center justify-center bg-gray-200 dark:bg-slate-800">
+						<Ionicons
+							name="person-outline"
+							size={24}
+							className="text-slate-500 dark:text-slate-400"
+						/>
+					</View>
+				)}
 
-      {/* Real Map — rendered if activity has encodedPolyline */}
-      {activity.encodedPolyline ? (
-        <TouchableOpacity
-          onPress={handlePressCard}
-          activeOpacity={0.9}
-          className="my-3 rounded-lg overflow-hidden border border-gray-200 h-72 w-full bg-gray-100"
-        >
-          <ActivityMap
-            encodedPolyline={activity.encodedPolyline}
-            isStatic={true}
-            style={{ width: "100%", height: "100%" }}
-          />
-        </TouchableOpacity>
-      ) : null}
+				<View className="flex-1 min-w-0 ml-3">
+					<Text
+						numberOfLines={1}
+						className="text-base font-bold leading-[21px] text-slate-900 dark:text-white"
+					>
+						{user?.name || "User"}
+					</Text>
+					<View className="flex-row items-center mt-0.5">
+						<Ionicons
+							name="calendar-outline"
+							size={13}
+							className="text-slate-500 dark:text-slate-400"
+						/>
+						<Text
+							numberOfLines={1}
+							className="shrink text-xs leading-4 font-medium text-slate-500 dark:text-slate-400 ml-1.5"
+						>
+							{formattedDate} · {formattedTime}
+						</Text>
+					</View>
+				</View>
 
-      {/* Action Row: Kudos & Comment */}
-      <View className="mt-3 pt-3 border-t border-gray-100 flex-row justify-end items-center gap-2">
-        <TouchableOpacity
-          activeOpacity={0.7}
-          className="p-2.5 rounded-lg bg-gray-100 items-center justify-center"
-        >
-          <Ionicons name="thumbs-up-outline" size={20} color="#374151" />
-        </TouchableOpacity>
+				<View className="size-11 ml-3 rounded-2xl items-center justify-center bg-orange-50 dark:bg-strava/20">
+					{getSportIcon(activity.type)}
+				</View>
+			</TouchableOpacity>
 
-        <TouchableOpacity
-          activeOpacity={0.7}
-          className="p-2.5 rounded-lg bg-gray-100 items-center justify-center"
-        >
-          <Ionicons name="chatbubble-outline" size={20} color="#374151" />
-        </TouchableOpacity>
-      </View>
-    </View>
-  )
+			<TouchableOpacity
+				onPress={handlePressCard}
+				activeOpacity={0.75}
+				accessibilityRole="button"
+				accessibilityLabel={`Open ${activity.title || "activity"}`}
+				className="mt-5 md:mt-6"
+			>
+				<Text className="text-[11px] leading-[15px] font-extrabold tracking-[1.1px] uppercase text-strava mb-1.5">
+					{getSportLabel(activity.type)}
+				</Text>
+				<Text className="text-[23px] md:text-[26px] font-extrabold leading-[30px] tracking-[-0.5px] text-slate-900 dark:text-white">
+					{activity.title || "Untitled activity"}
+				</Text>
+				{activity.description ? (
+					<Text
+						numberOfLines={4}
+						className="mt-2 text-sm leading-[21px] text-slate-600 dark:text-slate-300"
+					>
+						{activity.description}
+					</Text>
+				) : null}
+			</TouchableOpacity>
+
+			<View className="w-full flex-row mt-5 md:mt-6 py-3.5 px-1.5 rounded-[17px] bg-slate-50 dark:bg-slate-800/70">
+				{stats.map((stat, index) => (
+					<View
+						key={stat.label}
+						className={`flex-1 min-w-0 px-2 ${
+							index > 0
+								? "border-l border-slate-200 dark:border-slate-700/80"
+								: ""
+						}`}
+					>
+						<Text
+							numberOfLines={1}
+							className="mb-1 text-[10px] leading-[14px] font-bold tracking-[0.5px] uppercase text-slate-500 dark:text-slate-400"
+						>
+							{stat.label}
+						</Text>
+						<Text
+							numberOfLines={1}
+							adjustsFontSizeToFit
+							minimumFontScale={0.72}
+							className="text-[21px] md:text-[23px] font-extrabold leading-7 tracking-[-0.4px] text-slate-900 dark:text-white"
+						>
+							{stat.value}
+						</Text>
+					</View>
+				))}
+			</View>
+
+			{activity.location ? (
+				<View className="flex-row items-center mt-3.5">
+					<Ionicons
+						name="location-outline"
+						size={15}
+						className="text-slate-500 dark:text-slate-400"
+					/>
+					<Text
+						numberOfLines={1}
+						className="flex-1 text-xs leading-4 font-medium text-slate-500 dark:text-slate-400 ml-1.5"
+					>
+						{activity.location}
+					</Text>
+				</View>
+			) : null}
+
+			{activity.encodedPolyline ? (
+				<TouchableOpacity
+					onPress={handlePressCard}
+					activeOpacity={0.92}
+					accessibilityRole="button"
+					accessibilityLabel="Open activity map"
+					className="w-full h-72 mt-4 rounded-[18px] overflow-hidden border border-gray-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-800"
+				>
+					<ActivityMap
+						encodedPolyline={activity.encodedPolyline}
+						isStatic={true}
+						style={{ width: "100%", height: "100%" }}
+					/>
+				</TouchableOpacity>
+			) : null}
+
+			<View className="w-full flex-row items-center justify-between mt-4 pt-3.5 border-t border-slate-100 dark:border-slate-800">
+				<Text className="flex-1 text-xs leading-4 font-medium text-slate-500 dark:text-slate-400 mr-3">
+					Enjoyed this activity?
+				</Text>
+				<View className="flex-row items-center gap-2">
+					<TouchableOpacity
+						activeOpacity={0.7}
+						accessibilityRole="button"
+						accessibilityLabel="Give kudos"
+						className="size-10 items-center justify-center rounded-[13px] border border-gray-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/70"
+					>
+						<Ionicons
+							name="thumbs-up-outline"
+							size={18}
+							className="text-slate-600 dark:text-slate-300"
+						/>
+					</TouchableOpacity>
+					<TouchableOpacity
+						activeOpacity={0.7}
+						accessibilityRole="button"
+						accessibilityLabel="View comments"
+						className="size-10 items-center justify-center rounded-[13px] border border-gray-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/70"
+					>
+						<Ionicons
+							name="chatbubble-outline"
+							size={18}
+							className="text-slate-600 dark:text-slate-300"
+						/>
+					</TouchableOpacity>
+				</View>
+			</View>
+		</View>
+	);
 }
