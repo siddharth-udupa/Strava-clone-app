@@ -10,7 +10,21 @@ export type ActivityAthleteHeaderProps = {
   title?: string | null
   description?: string | null
   avatarUrl?: string
+  location?: string | null
+  startTime?: string | Date | null
+  endTime?: string | Date | null
   onAddDescription?: () => void
+}
+
+function formatTime(value: string | Date | null | undefined) {
+  if (!value) return ""
+  const date = new Date(value)
+  if (Number.isNaN(date.getTime())) return ""
+
+  return date.toLocaleTimeString(undefined, {
+    hour: "numeric",
+    minute: "2-digit",
+  })
 }
 
 export default function ActivityAthleteHeader({
@@ -20,6 +34,9 @@ export default function ActivityAthleteHeader({
   title,
   description,
   avatarUrl = "https://avatar.iran.liara.run/public/48",
+  location,
+  startTime,
+  endTime,
   onAddDescription,
 }: ActivityAthleteHeaderProps) {
   const formattedDate = new Date(createdAt).toLocaleDateString(undefined, {
@@ -28,6 +45,8 @@ export default function ActivityAthleteHeader({
     day: "numeric",
     year: "numeric",
   })
+  const startLabel = formatTime(startTime)
+  const endLabel = formatTime(endTime)
 
   const getIconName = (type: ActivityTypes) => {
     switch (type) {
@@ -35,50 +54,69 @@ export default function ActivityAthleteHeader({
         return "bike"
       case "hike":
         return "hiking"
+      case "swim":
+        return "swim"
+      case "walk":
+        return "walk"
       default:
         return "run"
     }
   }
 
   return (
-    <View className="mb-2">
-      {/* Athlete Header */}
-      <View className="flex-row items-center justify-between mb-4">
-        <View className="flex-row items-center flex-1 mr-2">
-          <View className="w-12 h-12 rounded-full bg-gray-200 dark:bg-slate-800 border border-gray-200 dark:border-slate-700 overflow-hidden items-center justify-center mr-3.5 shadow-sm">
+    <View className="mb-5">
+      <View className="flex-row items-center justify-between mb-5">
+        <View className="flex-row items-center flex-1 mr-3">
+          <View className="w-12 h-12 rounded-2xl bg-[#1B2A40] border border-[#FC5200]/50 items-center justify-center overflow-hidden">
             <Image source={{ uri: avatarUrl }} className="w-full h-full" />
           </View>
-          <View className="flex-1 justify-center">
-            <Text className="text-[#FC5200] font-bold text-base leading-snug">{userName}</Text>
-            <Text className="text-gray-500 dark:text-slate-400 text-xs mt-0.5 leading-normal">
-              {formattedDate}
-            </Text>
+          <View className="flex-1 justify-center ml-3">
+            <Text className="text-white font-black text-base leading-tight mb-1">{userName}</Text>
+            <Text className="text-[#8A9AB2] text-xs leading-none">{formattedDate}</Text>
           </View>
         </View>
 
-        {/* Activity Type Badge */}
-        <View className="bg-[#FC5200]/15 border border-[#FC5200]/30 px-3.5 py-1.5 rounded-full flex-row items-center">
+        <View className="bg-[#FC5200]/15 border border-[#FC5200]/30 px-3 py-2 rounded-xl flex-row items-center">
           <MaterialCommunityIcons name={getIconName(activityType)} size={15} color="#FC5200" />
-          <Text className="text-[#FC5200] font-bold text-xs ml-1.5 leading-none">{activityType}</Text>
+          <Text className="text-[#FF8A5C] font-black text-[10px] uppercase tracking-[1px] ml-1.5 leading-none">
+            {activityType}
+          </Text>
         </View>
       </View>
 
-      {/* Activity Title & Description */}
-      <Text className="text-gray-900 dark:text-white text-2xl font-black tracking-tight leading-8 mb-2">
-        {title || "Untitled Activity"}
+      <View className="h-px bg-[#223149] mb-5" />
+
+      <Text className="text-white text-[30px] font-black tracking-[-0.5px] leading-[1.1] mb-2">
+        {title || "Untitled activity"}
       </Text>
       {description ? (
-        <Text className="text-gray-600 dark:text-slate-300 text-sm mb-4 leading-6">
-          {description}
-        </Text>
+        <Text className="text-[#A5B1C2] text-sm mb-4 leading-6">{description}</Text>
       ) : (
-        <TouchableOpacity onPress={onAddDescription} className="mb-4 mt-1 self-start active:opacity-70">
-          <Text className="text-gray-500 dark:text-slate-400 text-xs italic bg-gray-100 dark:bg-slate-800/80 px-3 py-1.5 rounded-md border border-gray-200 dark:border-slate-700/80 leading-tight">
+        <TouchableOpacity onPress={onAddDescription} className="mb-4 self-start active:opacity-70">
+          <Text className="text-[#8A9AB2] text-xs italic bg-[#111C2D] border border-[#223149] px-3 py-2 rounded-lg leading-tight">
             + Add a description
           </Text>
         </TouchableOpacity>
       )}
+
+      <View className="flex-row items-center flex-wrap">
+        {location ? (
+          <View className="flex-row items-center bg-[#111C2D] border border-[#223149] rounded-full px-3 py-2 mr-2 mb-2">
+            <MaterialCommunityIcons name="map-marker-outline" size={14} color="#60A5FA" />
+            <Text className="text-[#B8C3D3] text-xs font-semibold ml-1.5" numberOfLines={1}>
+              {location}
+            </Text>
+          </View>
+        ) : null}
+        {startLabel ? (
+          <View className="flex-row items-center bg-[#111C2D] border border-[#223149] rounded-full px-3 py-2 mr-2 mb-2">
+            <MaterialCommunityIcons name="clock-outline" size={14} color="#A78BFA" />
+            <Text className="text-[#B8C3D3] text-xs font-semibold ml-1.5">
+              {startLabel}{endLabel ? ` – ${endLabel}` : ""}
+            </Text>
+          </View>
+        ) : null}
+      </View>
     </View>
   )
 }
-

@@ -40,13 +40,13 @@ class ChartErrorBoundary extends React.Component<
   render() {
     if (this.state.hasError) {
       return (
-        <View className="bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800/80 rounded-2xl p-6 items-center justify-center my-4">
-          <Ionicons name="alert-circle-outline" size={36} color="#F59E0B" />
-          <Text className="text-amber-900 dark:text-amber-200 font-bold text-sm mt-2 text-center">
+        <View className="bg-[#2A1C16] border border-[#7A3E23] rounded-2xl p-6 items-center justify-center my-2">
+          <Ionicons name="alert-circle-outline" size={36} color="#FB923C" />
+          <Text className="text-[#FDBA74] font-bold text-sm mt-2 text-center">
             Unable to render chart
           </Text>
-          <Text className="text-amber-700 dark:text-amber-400 text-xs mt-1 text-center">
-            The native SVG views have not been compiled into your app binary yet. Run 'npx expo run:android' or rebuild your dev client to enable chart rendering.
+          <Text className="text-[#C58B68] text-xs mt-1 text-center leading-5">
+            The native chart views are not available in this build. Rebuild the app to enable chart rendering.
           </Text>
         </View>
       )
@@ -66,9 +66,9 @@ export default function ActivityTabViews({
       <ChartErrorBoundary>
         <React.Suspense
           fallback={
-            <View className="bg-gray-50 dark:bg-slate-950 border border-gray-200 dark:border-slate-800/80 rounded-2xl p-8 items-center justify-center my-4">
+            <View className="bg-[#0F1929] border border-[#223149] rounded-2xl p-8 items-center justify-center my-2">
               <ActivityIndicator size="small" color="#FC5200" />
-              <Text className="text-xs text-gray-500 mt-2">Loading analysis chart...</Text>
+              <Text className="text-[#8A9AB2] text-xs mt-2">Loading analysis chart...</Text>
             </View>
           }
         >
@@ -87,28 +87,36 @@ export default function ActivityTabViews({
 
   if (activeTab === "segments") {
     return (
-      <View className="bg-gray-50 dark:bg-slate-950 border border-gray-200 dark:border-slate-800/80 rounded-2xl p-4 items-center justify-center py-8">
-        <Ionicons name="git-commit-outline" size={36} color="#FC5200" />
-        <Text className="text-gray-900 dark:text-white font-bold text-sm mt-2">
-          Matched Segments
+      <View className="bg-[#0F1929] border border-[#223149] rounded-2xl p-5 my-2">
+        <View className="w-12 h-12 rounded-2xl bg-[#2A2144] items-center justify-center mb-4">
+          <Ionicons name="git-commit-outline" size={25} color="#A78BFA" />
+        </View>
+        <Text className="text-white font-black text-lg">Matched segments</Text>
+        <Text className="text-[#8A9AB2] text-sm mt-1 leading-5">
+          2 segment efforts were recorded on this route.
         </Text>
-        <Text className="text-gray-500 dark:text-slate-400 text-xs mt-1 text-center">
-          2 segment efforts recorded on this route.
-        </Text>
+        <View className="flex-row items-center bg-[#17263B] rounded-xl px-3 py-3 mt-4">
+          <Ionicons name="sparkles-outline" size={16} color="#FBBF24" />
+          <Text className="text-[#D5DDE8] text-xs font-semibold ml-2">Segment matching is ready</Text>
+        </View>
       </View>
     )
   }
 
   if (activeTab === "best_efforts") {
     return (
-      <View className="bg-gray-50 dark:bg-slate-950 border border-gray-200 dark:border-slate-800/80 rounded-2xl p-4 items-center justify-center py-8">
-        <Ionicons name="trophy-outline" size={36} color="#EAB308" />
-        <Text className="text-gray-900 dark:text-white font-bold text-sm mt-2">
-          Personal Records
+      <View className="bg-[#0F1929] border border-[#223149] rounded-2xl p-5 my-2">
+        <View className="w-12 h-12 rounded-2xl bg-[#3B2D12] items-center justify-center mb-4">
+          <Ionicons name="trophy-outline" size={25} color="#FBBF24" />
+        </View>
+        <Text className="text-white font-black text-lg">Personal records</Text>
+        <Text className="text-[#8A9AB2] text-sm mt-1 leading-5">
+          Your best 5k pace effort was achieved during this session.
         </Text>
-        <Text className="text-gray-500 dark:text-slate-400 text-xs mt-1 text-center">
-          Best 5k pace effort achieved during this run!
-        </Text>
+        <View className="flex-row items-center bg-[#17263B] rounded-xl px-3 py-3 mt-4">
+          <Ionicons name="checkmark-circle-outline" size={16} color="#34D399" />
+          <Text className="text-[#D5DDE8] text-xs font-semibold ml-2">Effort analysis complete</Text>
+        </View>
       </View>
     )
   }

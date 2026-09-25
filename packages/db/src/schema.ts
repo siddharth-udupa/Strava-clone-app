@@ -2,6 +2,8 @@ import { relations } from "drizzle-orm"
 import { pgTable, text, uuid, timestamp, integer, boolean, real, jsonb, pgEnum } from "drizzle-orm/pg-core"
 
 
+export const ActivityType = pgEnum("activity_type", ["run", "walk", "ride", "hike", "swim"])
+
 export const theme = pgEnum("theme", ["system", "dark", "light"])
 
 export const distanceUnit = pgEnum("distance_unit", ["metric", "imperial"])
@@ -20,7 +22,7 @@ export const timeFormat = pgEnum("time_format", ["12h", "24h"])
 export const activities = pgTable("activities", {
   activityId: uuid("activity_id").defaultRandom().primaryKey(),
   userId: text("user_id").notNull().references(() => user.id, { onDelete: "cascade" }),
-  type: text("type").notNull(),
+  type: ActivityType("type").notNull(),
   title: text("title").notNull(),
   description: text("description"),
   location: text("location"),
@@ -50,7 +52,7 @@ export const activityStreams = pgTable("activity_streams", {
 
 export const userPreferences = pgTable("user_preferences", {
   userId: text("user_id").primaryKey().references(() => user.id, { onDelete: "cascade" }),
-  onBoarded: boolean("on_boarding").default(false),
+  onBoarded: boolean("on_boarded").default(false),
   theme: theme("theme").default("system").notNull(),
   distanceUnit: distanceUnit("distance_unit").default("metric").notNull(),
   elevationUnit: elevationUnit("elevation_unit").default("meters").notNull(),

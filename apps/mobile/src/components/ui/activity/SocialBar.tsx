@@ -14,31 +14,38 @@ export default function ActivitySocialBar({
   onSharePress,
 }: ActivitySocialBarProps) {
   return (
-    <View className="flex-row items-center justify-between bg-gray-50 dark:bg-slate-950/70 border border-gray-200 dark:border-slate-800 rounded-xl p-2.5 mb-4">
+    <View className="flex-row items-center px-5 mb-7">
       <TouchableOpacity
         onPress={onKudosPress}
-        className="flex-1 flex-row items-center justify-center py-1.5 rounded-lg mr-1 bg-transparent"
+        className="flex-1 flex-row items-center justify-center bg-[#111C2D] border border-[#223149] rounded-2xl py-3 mr-1.5 active:bg-[#17263B]"
+        activeOpacity={0.8}
+        accessibilityRole="button"
+        accessibilityLabel="Give kudos"
       >
-        <Ionicons name="thumbs-up-outline" size={18} color="#4B5563" />
-        <Text className="text-xs font-bold ml-1.5 text-gray-700 dark:text-slate-400">Kudos</Text>
+        <Ionicons name="thumbs-up-outline" size={17} color="#FF8A5C" />
+        <Text className="text-[#D5DDE8] text-[11px] font-bold ml-1.5">Kudos</Text>
       </TouchableOpacity>
 
       <TouchableOpacity
         onPress={onCommentPress}
-        className="flex-1 flex-row items-center justify-center py-1.5 rounded-lg border-x border-gray-200 dark:border-slate-800"
+        className="flex-1 flex-row items-center justify-center bg-[#111C2D] border border-[#223149] rounded-2xl py-3 mx-0.75 active:bg-[#17263B]"
+        activeOpacity={0.8}
+        accessibilityRole="button"
+        accessibilityLabel="View comments"
       >
-        <Ionicons name="chatbubble-outline" size={18} color="#4B5563" />
-        <Text className="text-gray-700 dark:text-slate-400 text-xs font-bold ml-1.5">
-          Comments
-        </Text>
+        <Ionicons name="chatbubble-outline" size={16} color="#A78BFA" />
+        <Text className="text-[#D5DDE8] text-[11px] font-bold ml-1.5">Comments</Text>
       </TouchableOpacity>
 
       <TouchableOpacity
         onPress={onSharePress}
-        className="flex-1 flex-row items-center justify-center py-1.5 rounded-lg ml-1"
+        className="flex-1 flex-row items-center justify-center bg-[#111C2D] border border-[#223149] rounded-2xl py-3 ml-1.5 active:bg-[#17263B]"
+        activeOpacity={0.8}
+        accessibilityRole="button"
+        accessibilityLabel="Share activity"
       >
-        <Feather name="share-2" size={16} color="#4B5563" />
-        <Text className="text-gray-700 dark:text-slate-400 text-xs font-bold ml-1.5">Share</Text>
+        <Feather name="share-2" size={16} color="#60A5FA" />
+        <Text className="text-[#D5DDE8] text-[11px] font-bold ml-1.5">Share</Text>
       </TouchableOpacity>
     </View>
   )

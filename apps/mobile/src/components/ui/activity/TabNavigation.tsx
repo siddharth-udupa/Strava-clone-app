@@ -12,7 +12,7 @@ const TABS: { key: TabType; label: string }[] = [
   { key: "overview", label: "Overview" },
   { key: "analysis", label: "Analysis" },
   { key: "segments", label: "Segments" },
-  { key: "best_efforts", label: "Best Efforts" },
+  { key: "best_efforts", label: "Best efforts" },
 ]
 
 export default function ActivityTabNavigation({
@@ -20,26 +20,33 @@ export default function ActivityTabNavigation({
   onSelectTab,
 }: ActivityTabNavigationProps) {
   return (
-    <View className="flex-row items-center justify-around border-b border-gray-200 dark:border-slate-800 mb-5 py-0.5">
-      {TABS.map((tab) => (
-        <TouchableOpacity
-          key={tab.key}
-          onPress={() => onSelectTab(tab.key)}
-          className={`flex-1 items-center justify-center py-3 border-b-2 ${
-            activeTab === tab.key ? "border-[#FC5200]" : "border-transparent"
-          }`}
-          activeOpacity={0.7}
-        >
-          <Text
-            className={`text-xs font-bold tracking-wide leading-tight text-center ${
-              activeTab === tab.key ? "text-[#FC5200]" : "text-gray-500 dark:text-slate-400"
-            }`}
-          >
-            {tab.label}
-          </Text>
-        </TouchableOpacity>
-      ))}
+    <View className="mb-6 bg-[#0B1220] px-5">
+      <View className="flex-row bg-[#0F1929] border border-[#223149] rounded-2xl p-1">
+        {TABS.map((tab) => {
+          const isActive = activeTab === tab.key
+
+          return (
+            <TouchableOpacity
+              key={tab.key}
+              onPress={() => onSelectTab(tab.key)}
+              className={`flex-1 items-center justify-center rounded-xl py-3 ${
+                isActive ? "bg-[#FC5200]" : "bg-transparent"
+              }`}
+              activeOpacity={0.8}
+              accessibilityRole="tab"
+              accessibilityState={{ selected: isActive }}
+            >
+              <Text
+                className={`text-[11px] font-bold tracking-wide text-center ${
+                  isActive ? "text-white" : "text-[#8A9AB2]"
+                }`}
+              >
+                {tab.label}
+              </Text>
+            </TouchableOpacity>
+          )
+        })}
+      </View>
     </View>
   )
 }
-

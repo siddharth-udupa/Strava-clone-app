@@ -6,13 +6,12 @@ import { Gesture, GestureDetector } from "react-native-gesture-handler"
 import Animated, {
   useSharedValue,
   useAnimatedStyle,
-  useAnimatedScrollHandler,
   withSpring,
 } from "react-native-reanimated"
 import Map from "@/components/map/Map"
 import TileProviderPicker from "@/components/map/TileProviderPicker"
 import { DEFAULT_TILE_PROVIDER, type TileProviderId } from "@repo/maps"
-import { metersToDistance, metersToElevation, formatDurationShort, computePace } from "@repo/units"
+import { metersToDistance, metersToElevation, formatDurationShort, formatPace } from "@repo/units"
 import type { ActivityDetailsType } from "@repo/types"
 import { authClient, useSession } from "@/lib/auth-client"
 import { removeActivityFromCache } from "@/hooks/useActivities"
@@ -30,6 +29,14 @@ import {
 const { height: SCREEN_HEIGHT } = Dimensions.get("window")
 
 const API_URL = process.env.EXPO_PUBLIC_API_URL!
+
+function formatSpeed(metersPerSecond: number | null | undefined, unit: string) {
+  if (metersPerSecond == null) return "—"
+
+  if (unit === "m/s") return metersPerSecond.toFixed(2)
+  if (unit === "mph") return (metersPerSecond * 2.23694).toFixed(1)
+  return (metersPerSecond * 3.6).toFixed(1)
+}
 
 export default function ActivityDetailScreen() {
   const { data: session } = useSession()
@@ -51,10 +58,11 @@ export default function ActivityDetailScreen() {
   // Reanimated bottom sheet shared values
   const translateY = useSharedValue(HALF_Y)
   const contextY = useSharedValue(HALF_Y)
-  const scrollY = useSharedValue(0)
 
-  // Pan gesture for the drag handle bar and athlete header area
+  // Pan gesture for the drag handle and athlete header
   const handlePanGesture = Gesture.Pan()
+    .activeOffsetY([-8, 8])
+    .failOffsetX([-16, 16])
     .onStart(() => {
       contextY.value = translateY.value
     })
@@ -105,10 +113,6 @@ export default function ActivityDetailScreen() {
     return {
       transform: [{ translateY: translateY.value }],
     }
-  })
-
-  const scrollHandler = useAnimatedScrollHandler((event) => {
-    scrollY.value = event.contentOffset.y
   })
 
   useEffect(() => {
@@ -208,11 +212,16 @@ export default function ActivityDetailScreen() {
     return <ActivityNotFound onBack={handleBack} />
   }
 
-  const distance = metersToDistance(data.distance, data.user?.preferences.distanceUnit)
-  const elevGain = metersToElevation(data.elevationGain, data.user?.preferences.elevationUnit)
-  const elevLoss = metersToElevation(data.elevationLoss, data.user?.preferences.elevationUnit)
+  const distanceUnit = data.user?.preferences.distanceUnit ?? "metric"
+  const elevationUnit = data.user?.preferences.elevationUnit ?? "meters"
+  const paceUnit = data.user?.preferences.paceUnit ?? "min/km"
+  const speedUnit = data.user?.preferences.speedUnit ?? "km/h"
+  const distance = metersToDistance(data.distance, distanceUnit)
+  const elevGain = metersToElevation(data.elevationGain, elevationUnit)
+  const elevLoss = metersToElevation(data.elevationLoss, elevationUnit)
   const duration = formatDurationShort(data.duration)
-  const pace = computePace(data.duration, data.distance, data.user?.preferences.paceUnit)
+  const pace = formatPace(data.duration, data.distance, paceUnit)
+  const averageSpeed = data.duration > 0 ? data.distance / data.duration : null
 
   return (
     <View className="flex-1 bg-gray-100 dark:bg-slate-950">
@@ -261,63 +270,78 @@ export default function ActivityDetailScreen() {
           },
           animatedSheetStyle,
         ]}
-        className="bg-white dark:bg-slate-900 border-t border-gray-200 dark:border-slate-800 rounded-t-3xl shadow-2xl z-30 overflow-hidden"
+        className="bg-[#0B1220] border-t border-[#26354C] rounded-t-[32px] shadow-2xl z-30 overflow-hidden"
       >
         {/* Drag Handle & Top Athlete Header Region */}
         <GestureDetector gesture={handlePanGesture}>
-          <View className="w-full bg-white dark:bg-slate-900">
+          <View className="w-full bg-[#0B1220]">
             <View
               className="w-full items-center py-3.5 active:opacity-70"
               hitSlop={{ top: 12, bottom: 12, left: 24, right: 24 }}
               style={{ cursor: "grab" as any }}
             >
-              <View className="w-12 h-1.5 rounded-full bg-gray-300 dark:bg-slate-700" />
+              <View className="w-12 h-1.5 rounded-full bg-[#43536B]" />
             </View>
 
-            <View className="px-4 pb-2">
+            <View className="px-5 pb-2">
               <ActivityAthleteHeader
                 userName={data.user.name}
                 createdAt={data.createdAt}
                 activityType={data.type}
                 title={data.title}
                 description={data.description}
+                avatarUrl={data.user.image ?? undefined}
+                location={data.location}
+                startTime={data.startTime}
+                endTime={data.endTime}
               />
             </View>
           </View>
         </GestureDetector>
 
-        {/* Scrollable Activity Content */}
+        {/* Keep scrolling inside the sheet without forwarding it to a parent scroll view. */}
         <Animated.ScrollView
-          onScroll={scrollHandler}
-          scrollEventThrottle={16}
           showsVerticalScrollIndicator={false}
+          bounces={false}
+          overScrollMode="never"
+          stickyHeaderHiddenOnScroll={false}
+          stickyHeaderIndices={[1]}
+          style={{ flex: 1, backgroundColor: "#0B1220" }}
           contentContainerStyle={{
-            paddingHorizontal: 16,
             paddingBottom: Math.max(insets.bottom + 80, 100),
           }}
         >
-          {/* Kudos & Social Action Bar */}
           <ActivitySocialBar />
 
-          {/* TAB NAVIGATION HEADER (Overview, Analysis, Segments, Best Efforts) */}
-          <ActivityTabNavigation activeTab={activeTab} onSelectTab={setActiveTab} />
+          <View style={{ zIndex: 10, backgroundColor: "#0B1220" }}>
+            <ActivityTabNavigation activeTab={activeTab} onSelectTab={setActiveTab} />
+          </View>
 
-          {/* TAB CONTENT */}
-          {activeTab === "overview" ? (
-            <ActivityOverviewTab
-              distance={distance}
-              duration={duration}
-              pace={pace}
-              elevGain={elevGain}
-              elevLoss={elevLoss}
-            />
-          ) : (
-            <ActivityTabViews
-              activeTab={activeTab}
-              streams={data.streams}
-              preferences={data.user?.preferences}
-            />
-          )}
+          <View className="px-5">
+            {activeTab === "overview" ? (
+              <ActivityOverviewTab
+                distance={distance}
+                duration={duration}
+                pace={pace}
+                elevGain={elevGain}
+                elevLoss={elevLoss}
+                averageSpeed={formatSpeed(averageSpeed, speedUnit)}
+                maxSpeed={formatSpeed(data.maxSpeedMps, speedUnit)}
+                distanceUnit={distanceUnit}
+                elevationUnit={elevationUnit}
+                speedUnit={speedUnit}
+                location={data.location}
+                startTime={data.startTime}
+                endTime={data.endTime}
+              />
+            ) : (
+              <ActivityTabViews
+                activeTab={activeTab}
+                streams={data.streams}
+                preferences={data.user?.preferences}
+              />
+            )}
+          </View>
         </Animated.ScrollView>
       </Animated.View>
     </View>

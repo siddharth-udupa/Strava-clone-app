@@ -30,4 +30,5 @@ export type ActivitySummary = {
   points: ActivityPoint[]
 }
 
+// If you update this type then update the Enum in db schema 
 export type ActivityTypes = "run" | "walk" | "ride" | "hike" | "swim"
