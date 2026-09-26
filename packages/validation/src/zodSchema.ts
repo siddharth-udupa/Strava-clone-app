@@ -1,23 +1,130 @@
 import { z } from "zod"
+import { ACTIVITY_TYPES } from "@repo/types"
 
-// Lowercase activity types — keep in sync with ActivityTypes in @repo/types/src/activity.ts
-export const ActivityTypesSchema = z.enum(["run", "walk", "ride", "hike", "swim"])
+// ---------------------------------------------------------------------------
+// Activity type
+// ---------------------------------------------------------------------------
 
-export const CreateActivitySchema = z.object({
-  distance: z.number().nonnegative(),
-  duration: z.object({
-    hr: z.number().int().min(0),
-    min: z.number().int().min(0).max(59),
-    sec: z.number().int().min(0).max(59),
-  }),
-  elevationGain: z.number().nonnegative(),
-  elevationLoss: z.number().nonnegative(),
-  type: z.enum(["Run", "Ride", "Swim", "Walk", "Hike", "Other"]),
-  startTime: z.iso.datetime({ local: true }),
-  endTime: z.iso.datetime({ local: true }),
-  title: z.string().min(1).max(100),
-  description: z.string().max(1000),
+/**
+ * Single source of truth for the activity type field.
+ *
+ * The `activity_type` pgEnum only accepts lowercase values, so everything is
+ * normalised to lowercase here — clients may send "Run", "run" or " RUN " and
+ * always end up with a value Postgres will accept. Anything outside the enum
+ * (including the old "Other" option) is rejected at the edge instead of
+ * blowing up on an INSERT.
+ */
+export const ActivityTypeSchema = z
+  .string()
+  .trim()
+  .transform((value) => value.toLowerCase())
+  .pipe(
+    z.enum(ACTIVITY_TYPES, {
+      error: `Must be one of: ${ACTIVITY_TYPES.join(", ")}`,
+    })
+  )
+
+/** @deprecated use {@link ActivityTypeSchema} */
+export const ActivityTypesSchema = ActivityTypeSchema
+
+// ---------------------------------------------------------------------------
+// Shared field schemas
+// ---------------------------------------------------------------------------
+
+const MAX_TRACK_POINTS = 100_000
+const MAX_TITLE_LENGTH = 100
+const MAX_DESCRIPTION_LENGTH = 1000
+const MAX_GPX_BYTES = 10_000_000
+
+const TitleSchema = z
+  .string()
+  .trim()
+  .min(1, "Title is required")
+  .max(MAX_TITLE_LENGTH)
+
+const DescriptionSchema = z
+  .string()
+  .trim()
+  .max(MAX_DESCRIPTION_LENGTH)
+  .nullable()
+  .optional()
+
+/**
+ * A date-time string that `new Date()` can actually parse.
+ *
+ * Kept as a `string` (rather than transformed to a `Date`) so the inferred
+ * input type stays usable by the client forms, but invalid values like
+ * "not-a-date" are now rejected instead of silently becoming `Invalid Date`
+ * and later crashing the Postgres INSERT.
+ */
+const DateStringSchema = z
+  .string()
+  .trim()
+  .min(1, "Invalid date")
+  .refine((value) => !Number.isNaN(new Date(value).getTime()), {
+    message: "Invalid date",
+  })
+
+const DurationObjectSchema = z.object({
+  hr: z.number().int().min(0),
+  min: z.number().int().min(0).max(59),
+  sec: z.number().int().min(0).max(59),
 })
+
+// ---------------------------------------------------------------------------
+// Mobile (recorder) payload
+// ---------------------------------------------------------------------------
+
+export const MobileActivityPointSchema = z.object({
+  latitude: z.number().min(-90).max(90),
+  longitude: z.number().min(-180).max(180),
+  altitude: z.number().nullable().optional(),
+  speed: z.number().nonnegative().nullable().optional(),
+  accuracy: z.number().nonnegative().nullable().optional(),
+  timestamp: z.number().int().nonnegative(),
+})
+
+export const MobileActivitySchema = z
+  .object({
+    id: z.string().optional(),
+    type: ActivityTypeSchema,
+    title: TitleSchema,
+    description: DescriptionSchema,
+    startedAt: z.number().int().nonnegative(),
+    endedAt: z.number().int().nonnegative().optional(),
+    distanceMeters: z.number().nonnegative(),
+    durationSeconds: z.number().nonnegative(),
+    movingTimeSeconds: z.number().nonnegative().optional(),
+    avgSpeedMps: z.number().nonnegative().optional(),
+    maxSpeedMps: z.number().nonnegative().optional(),
+    points: z
+      .array(MobileActivityPointSchema)
+      .max(MAX_TRACK_POINTS, `Too many track points (max ${MAX_TRACK_POINTS})`)
+      .optional()
+      .default([]),
+  })
+  .refine((value) => value.endedAt === undefined || value.endedAt >= value.startedAt, {
+    message: "End time must be after start time",
+    path: ["endedAt"],
+  })
+
+// ---------------------------------------------------------------------------
+// GPX payload
+// ---------------------------------------------------------------------------
+
+export const GpxActivitySchema = z.object({
+  title: TitleSchema,
+  description: DescriptionSchema,
+  xmlContent: z
+    .string()
+    .min(1, "GPX content cannot be empty")
+    .max(MAX_GPX_BYTES, "GPX file is too large (max 10 MB)"),
+  type: ActivityTypeSchema.default("run"),
+})
+
+// ---------------------------------------------------------------------------
+// Manual payload
+// ---------------------------------------------------------------------------
 
 export const MetaDataSchema = z.object({
   distanceUnit: z.enum(["metric", "imperial"]),
@@ -25,72 +132,58 @@ export const MetaDataSchema = z.object({
   elevUnitLoss: z.enum(["meters", "feet"]),
 })
 
-export const UploadFileSchema = z.object({
-  title: z.string().min(1).max(100),
-  description: z.string().max(1000).nullable(),
-  file: z.file(),
-})
+export const ManualActivitySchema = z
+  .object({
+    title: TitleSchema,
+    description: DescriptionSchema,
+    type: ActivityTypeSchema,
+    distance: z.number().nonnegative(),
+    duration: z.union([z.number().nonnegative(), DurationObjectSchema]),
+    elevationGain: z.number().nonnegative().optional().default(0),
+    elevationLoss: z.number().nonnegative().optional().default(0),
+    startTime: DateStringSchema.nullable().optional(),
+    endTime: DateStringSchema.nullable().optional(),
+    metaData: z
+      .object({
+        distanceUnit: z.enum(["metric", "imperial"]).optional().default("metric"),
+        elevUnitGain: z.enum(["meters", "feet"]).optional().default("meters"),
+        elevUnitLoss: z.enum(["meters", "feet"]).optional().default("meters"),
+      })
+      .optional()
+      .default({
+        distanceUnit: "metric",
+        elevUnitGain: "meters",
+        elevUnitLoss: "meters",
+      }),
+  })
+  .refine(
+    (value) =>
+      !value.startTime ||
+      !value.endTime ||
+      new Date(value.endTime).getTime() >= new Date(value.startTime).getTime(),
+    { message: "End time must be after start time", path: ["endTime"] }
+  )
 
-export const MobileActivityPointSchema = z.object({
-  latitude: z.number(),
-  longitude: z.number(),
-  altitude: z.number().nullable().optional(),
-  speed: z.number().nullable().optional(),
-  accuracy: z.number().nullable().optional(),
-  timestamp: z.number(),
-})
+// ---------------------------------------------------------------------------
+// Misc / legacy
+// ---------------------------------------------------------------------------
 
-export const MobileActivitySchema = z.object({
-  id: z.string().optional(),
-  type: ActivityTypesSchema,
-  title: z.string().min(1).max(100),
-  description: z.string().max(1000).optional().nullable(),
-  startedAt: z.number(),
-  endedAt: z.number().optional(),
-  distanceMeters: z.number().nonnegative(),
-  durationSeconds: z.number().nonnegative(),
-  movingTimeSeconds: z.number().nonnegative().optional(),
-  avgSpeedMps: z.number().nonnegative().optional(),
-  maxSpeedMps: z.number().nonnegative().optional(),
-  points: z.array(MobileActivityPointSchema).optional().default([]),
-})
-
-export const GpxActivitySchema = z.object({
-  title: z.string().min(1).max(100),
-  description: z.string().max(1000).optional().nullable(),
-  xmlContent: z.string().min(1, "GPX content cannot be empty").max(10_000_000, "GPX file is too large (max 10 MB)"),
-  type: z.string().optional().default("Run"),
-})
-
-export const ManualActivitySchema = z.object({
-  title: z.string().min(1).max(100),
-  description: z.string().max(1000).optional().nullable(),
-  type: z.enum(["Run", "Ride", "Swim", "Walk", "Hike", "Other"]),
+export const CreateActivitySchema = z.object({
   distance: z.number().nonnegative(),
-  duration: z.union([
-    z.number().nonnegative(),
-    z.object({
-      hr: z.number().int().min(0),
-      min: z.number().int().min(0).max(59),
-      sec: z.number().int().min(0).max(59),
-    }),
-  ]),
-  elevationGain: z.number().nonnegative().optional().default(0),
-  elevationLoss: z.number().nonnegative().optional().default(0),
-  startTime: z.string().optional().nullable(),
-  endTime: z.string().optional().nullable(),
-  metaData: z
-    .object({
-      distanceUnit: z.enum(["metric", "imperial"]).optional().default("metric"),
-      elevUnitGain: z.enum(["meters", "feet"]).optional().default("meters"),
-      elevUnitLoss: z.enum(["meters", "feet"]).optional().default("meters"),
-    })
-    .optional()
-    .default({
-      distanceUnit: "metric",
-      elevUnitGain: "meters",
-      elevUnitLoss: "meters",
-    }),
+  duration: DurationObjectSchema,
+  elevationGain: z.number().nonnegative(),
+  elevationLoss: z.number().nonnegative(),
+  type: ActivityTypeSchema,
+  startTime: z.iso.datetime({ local: true }),
+  endTime: z.iso.datetime({ local: true }),
+  title: TitleSchema,
+  description: z.string().max(MAX_DESCRIPTION_LENGTH),
+})
+
+export const UploadFileSchema = z.object({
+  title: TitleSchema,
+  description: z.string().max(MAX_DESCRIPTION_LENGTH).nullable(),
+  file: z.file(),
 })
 
 export type CreateActivityCardType = z.infer<typeof CreateActivitySchema>

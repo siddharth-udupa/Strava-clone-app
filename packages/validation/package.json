@@ -6,6 +6,7 @@
     ".": "./src/index.ts"
   },
   "dependencies": {
+    "@repo/types": "workspace:*",
     "zod": "^4.4.3"
   }
 }

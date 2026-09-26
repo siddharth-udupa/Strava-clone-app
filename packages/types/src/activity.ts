@@ -1,4 +1,9 @@
-import type { activitiesType, activityStreamsInsertType, getActivityDetails } from "@repo/db"
+import type {
+  activitiesType,
+  activityStreamsInsertType,
+  getActivityDetails,
+  ActivityType,
+} from "@repo/db"
 
 export type ActivityCardType = activitiesType
 
@@ -30,5 +35,16 @@ export type ActivitySummary = {
   points: ActivityPoint[]
 }
 
-// If you update this type then update the Enum in db schema 
-export type ActivityTypes = "run" | "walk" | "ride" | "hike" | "swim"
+// Derived from the drizzle pgEnum (type-only import, so nothing pulls `pg` into
+// the client bundles) so the TS union can never drift from the `activity_type`
+// enum in Postgres. Only these exact lowercase values can be persisted.
+export type ActivityTypes = (typeof ActivityType.enumValues)[number]
+
+/** Runtime-safe list mirroring {@link ActivityTypes}, for validation schemas. */
+export const ACTIVITY_TYPES = [
+  "run",
+  "walk",
+  "ride",
+  "hike",
+  "swim",
+] as const satisfies readonly ActivityTypes[]

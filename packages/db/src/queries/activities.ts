@@ -1,6 +1,12 @@
 import { and, desc, eq } from "drizzle-orm"
 import { db } from "../db"
-import { activities, activitiesInsertType, user } from "../schema"
+import {
+  activities,
+  activitiesInsertType,
+  activityStreams,
+  activityStreamsInsertType,
+  user,
+} from "../schema"
 
 export type ActivityDetailsType = NonNullable<Awaited<ReturnType<typeof getActivityDetails>>>
 
@@ -50,13 +56,39 @@ export async function getActivityDetails(activityId: string) {
   return activity
 }
 
-export async function CreateActivity(data: activitiesInsertType) {
-  const res = await db
-    .insert(activities)
-    .values(data)
-    .returning()
+export type ActivityStreamsInput = Omit<
+  activityStreamsInsertType,
+  "id" | "activityId" | "createdAt"
+>
 
-  return res
+/**
+ * Inserts an activity and its track streams atomically.
+ *
+ * Both rows are written inside a single transaction: a failure on the streams
+ * insert rolls the activity insert back instead of leaving an activity with no
+ * track data behind.
+ */
+export async function CreateActivity(
+  data: activitiesInsertType,
+  streams?: ActivityStreamsInput
+) {
+  const [created] = await db.transaction(async (tx) => {
+    const inserted = await tx.insert(activities).values(data).returning()
+
+    if (streams) {
+      await tx.insert(activityStreams).values({
+        activityId: inserted[0].activityId,
+        timeData: streams.timeData,
+        distanceData: streams.distanceData,
+        altitudeData: streams.altitudeData,
+        speedData: streams.speedData,
+      })
+    }
+
+    return inserted
+  })
+
+  return created
 }
 
 export async function DeleteActivity(activityId: string, userId?: string) {

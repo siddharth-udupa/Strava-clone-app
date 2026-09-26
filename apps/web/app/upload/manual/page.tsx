@@ -21,7 +21,7 @@ export default function Manual() {
     duration: { hr: 0, min: 30, sec: 0 },
     elevationGain: 0,
     elevationLoss: 0,
-    type: "Run",
+    type: "run" as ActivityTypes,
     startTime: defaultDateTime,
     endTime: "",
     title: "",
@@ -320,7 +320,9 @@ export default function Manual() {
                 className="h-full px-3 pr-8 text-sm bg-white outline-none cursor-pointer min-w-40 text-gray-900"
               >
                 {SPORTS.map(sport => (
-                  <option key={sport} value={sport}>{sport}</option>
+                  <option key={sport} value={sport}>
+                    {sport.charAt(0).toUpperCase() + sport.slice(1)}
+                  </option>
                 ))}
               </select>
             </div>

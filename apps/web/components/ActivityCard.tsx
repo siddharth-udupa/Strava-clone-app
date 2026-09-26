@@ -176,7 +176,7 @@ export default function ActivityCard({
 							height={48}
 							src="/temphoto.png"
 							alt={userName || "User Profile"}
-							className="size-12 rounded-full object-cover ring-2 ring-white transition-transform duration-200 hover:scale-105 dark:ring-slate-900 sm:size-[52px]"
+							className="size-12 rounded-full object-cover ring-2 ring-white transition-transform duration-200 hover:scale-105 dark:ring-slate-900 sm:size-13"
 						/>
 						<span className="absolute -bottom-0.5 -right-0.5 size-4 rounded-full border-2 border-white bg-emerald-500 dark:border-slate-900" />
 					</button>
@@ -199,7 +199,7 @@ export default function ActivityCard({
 
 					<div className="flex size-11 shrink-0 items-center justify-center rounded-2xl bg-orange-50 ring-1 ring-inset ring-orange-100 dark:bg-orange-500/15 dark:ring-orange-500/20 sm:size-12">
 						<SportIcon
-							className="size-5 text-stravaorange sm:size-[22px]"
+							className="size-5 text-stravaorange sm:size-5.5"
 							strokeWidth={2.25}
 							aria-hidden="true"
 						/>
@@ -291,7 +291,7 @@ export default function ActivityCard({
 						className="flex h-10 items-center gap-2 rounded-xl border border-slate-200 bg-slate-50 px-3.5 text-sm font-semibold text-slate-700 transition-all hover:border-orange-200 hover:bg-orange-50 hover:text-stravaorange focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-stravaorange active:scale-[0.98] dark:border-slate-700 dark:bg-slate-800/70 dark:text-slate-200 dark:hover:border-orange-500/30 dark:hover:bg-orange-500/10 dark:hover:text-orange-400"
 						aria-label="Give kudos"
 					>
-						<ThumbsUp className="size-[18px]" aria-hidden="true" />
+						<ThumbsUp className="size-4.5" aria-hidden="true" />
 						<span className="hidden sm:inline">Give kudos</span>
 					</button>
 					<button
@@ -299,7 +299,7 @@ export default function ActivityCard({
 						className="flex size-10 items-center justify-center rounded-xl border border-slate-200 bg-slate-50 text-slate-600 transition-all hover:border-orange-200 hover:bg-orange-50 hover:text-stravaorange focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-stravaorange active:scale-[0.98] dark:border-slate-700 dark:bg-slate-800/70 dark:text-slate-300 dark:hover:border-orange-500/30 dark:hover:bg-orange-500/10 dark:hover:text-orange-400"
 						aria-label="View comments"
 					>
-						<MessageSquare className="size-[18px]" aria-hidden="true" />
+						<MessageSquare className="size-4.5" aria-hidden="true" />
 					</button>
 				</div>
 			</footer>

@@ -22,8 +22,9 @@ import { invalidateActivitiesCache } from "@/hooks/useActivities"
 
 const API_URL = process.env.EXPO_PUBLIC_API_URL!
 
-// Matches ManualActivitySchema type enum exactly
-const SPORTS: ManualActivityInput["type"][] = ["Run", "Ride", "Swim", "Walk", "Hike", "Other"]
+// Lowercase values — must match the `activity_type` pgEnum. "Other" was
+// removed: the database has no such value, so it could never be persisted.
+const SPORTS: ManualActivityInput["type"][] = ["run", "ride", "swim", "walk", "hike"]
 
 const DISTANCE_UNITS: DistanceUnit[] = ["metric", "imperial"]
 const ELEVATION_UNITS: ElevationUnit[] = ["meters", "feet"]
@@ -199,12 +200,11 @@ function SportSelector({
   onChange: (v: ManualActivityInput["type"]) => void
 }) {
   const SPORT_ICONS: Record<ManualActivityInput["type"], React.ComponentProps<typeof Ionicons>["name"]> = {
-    Run: "walk",
-    Ride: "bicycle",
-    Swim: "water",
-    Walk: "footsteps",
-    Hike: "trail-sign",
-    Other: "ellipsis-horizontal-circle",
+    run: "walk",
+    ride: "bicycle",
+    swim: "water",
+    walk: "footsteps",
+    hike: "trail-sign",
   }
 
   return (
@@ -226,7 +226,7 @@ function SportSelector({
             <Text
               className={`text-xs font-semibold ${isActive ? "text-white" : "text-gray-600 dark:text-slate-300"}`}
             >
-              {sport}
+              {sport.charAt(0).toUpperCase() + sport.slice(1)}
             </Text>
           </TouchableOpacity>
         )
@@ -309,7 +309,7 @@ export default function ManualUploadScreen() {
     duration: { hr: 0, min: 30, sec: 0 },
     elevationGain: "",
     elevationLoss: "",
-    type: "Run",
+    type: "run",
     startTime: getLocalDateTimeString(),
     endTime: "",
     title: "",
