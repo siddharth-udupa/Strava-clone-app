@@ -18,7 +18,7 @@ import {
   metersToDistance,
   mpsToSpeed,
 } from "@repo/units"
-import Map from "@/components/map/Map"
+import MapView from "@/components/map/Map"
 import ActionModal from "@/components/ui/ActionModal"
 import { useActivityRecorder } from "@/hooks/useActivityRecorder"
 import {
@@ -293,7 +293,7 @@ export default function SaveActivityScreen() {
 
           {/* 5. MAP */}
           <View className="mx-4 mb-3 rounded-2xl overflow-hidden bg-slate-900 border border-gray-200 dark:border-slate-800 shadow-sm h-48 relative">
-            <Map isStatic={true} livePoints={points} />
+            <MapView isStatic={true} livePoints={points} />
             <View className="absolute bottom-2 left-2 bg-slate-900/80 px-2.5 py-1 rounded-md border border-slate-700/50 flex-row items-center">
               <Ionicons name="location-sharp" size={12} color="#FC5200" />
               <Text className="text-white text-[11px] font-bold ml-1">

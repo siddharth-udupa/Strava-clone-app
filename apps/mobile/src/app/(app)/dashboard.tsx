@@ -17,12 +17,12 @@ export default function DashboardScreen() {
   const router = useRouter()
   const insets = useSafeAreaInsets()
   const [activeTab, setActiveTab] = useState<ActiveTabType>("home")
+  
+  const { activities, isLoading, refreshing, error, refetch } = useActivities(session?.user.id)
 
   if (!session) {
     return <Redirect href={"/(auth)/sign-in" as any} />
   }
-
-  const { activities, isLoading, refreshing, error, refetch } = useActivities(session?.user.id)
 
   const handleSignOut = async () => {
     await signOut()

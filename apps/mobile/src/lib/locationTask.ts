@@ -140,7 +140,9 @@ if (TaskManager?.defineTask) {
           const point = coordsToPoint(loc.coords, loc.timestamp)
           if (isValidLocationPoint(point)) {
             validPoints.push(point)
-            listeners.forEach((fn) => fn(point))
+            listeners.forEach((fn) => {
+              fn(point)
+            })
           }
         }
 

@@ -2,7 +2,7 @@ import { useState } from "react"
 import { View } from "react-native"
 import { type EdgeInsets } from "react-native-safe-area-context"
 import { DEFAULT_TILE_PROVIDER, type TileProviderId } from "@repo/maps"
-import Map from "./map/Map"
+import MapView from "./map/Map"
 import TileProviderPicker from "./map/TileProviderPicker"
 
 export type MapScreenProps = {
@@ -18,7 +18,7 @@ export default function MapScreen({ insets, encodedPolyline }: MapScreenProps) {
   return (
     <View className="flex-1 bg-gray-100 dark:bg-slate-950 relative" style={{ paddingBottom }}>
       {/* Pure Map Renderer */}
-      <Map
+      <MapView
         encodedPolyline={encodedPolyline}
         isStatic={false}
         providerId={providerId}

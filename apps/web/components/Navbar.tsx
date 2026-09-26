@@ -192,6 +192,7 @@ export default function Navbar() {
                 </button>
 
                 {activeDropdown === "dashboard" && (
+                  // biome-ignore lint/a11y/noStaticElementInteractions: mouse-only hover-dismiss on a presentational panel; the dropdown is fully operable via the sibling <button> and its <Link>s
                   <div
                     onMouseLeave={() => setActiveDropdown(null)}
                     className="absolute left-0 top-full mt-1 w-48 bg-white rounded-md shadow-lg border border-gray-100 py-1 z-50 animate-in fade-in slide-in-from-top-1 duration-150"
@@ -236,6 +237,7 @@ export default function Navbar() {
                 </button>
 
                 {activeDropdown === "training" && (
+                  // biome-ignore lint/a11y/noStaticElementInteractions: mouse-only hover-dismiss on a presentational panel; the dropdown is fully operable via the sibling <button> and its <Link>s
                   <div
                     onMouseLeave={() => setActiveDropdown(null)}
                     className="absolute left-0 top-full mt-1 w-48 bg-white rounded-md shadow-lg border border-gray-100 py-1 z-50 animate-in fade-in slide-in-from-top-1 duration-150"

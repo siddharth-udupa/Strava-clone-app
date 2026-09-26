@@ -69,6 +69,7 @@ export default function DisplayStep({ data, updateField }: Props) {
                 return (
                   <button
                     key={opt.value}
+                    type="button"
                     onClick={() => updateField(group.field, opt.value)}
                     className={`flex-1 px-4 py-2.5 rounded-lg text-sm font-medium border transition-colors ${
                       selected

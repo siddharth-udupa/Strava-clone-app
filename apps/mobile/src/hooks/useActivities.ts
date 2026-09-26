@@ -20,7 +20,9 @@ export function removeActivityFromCache(activityId: string) {
       (a) => a.activityId !== activityId && (a as any).id !== activityId
     )
   }
-  deleteListeners.forEach((listener) => listener(activityId))
+  deleteListeners.forEach((listener) => {
+    listener(activityId)
+  })
 }
 
 /**
@@ -31,7 +33,7 @@ export function invalidateActivitiesCache() {
   cachedActivities = null
 }
 
-export function useActivities(userId: string) {
+export function useActivities(userId: string | undefined) {
   const isCacheValid = cachedUserId === userId && cachedActivities !== null
   const [activities, setActivities] = useState<ActivityCardType[]>(
     isCacheValid ? (cachedActivities as ActivityCardType[]) : []

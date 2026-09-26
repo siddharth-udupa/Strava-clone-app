@@ -22,7 +22,7 @@ import {
 	View,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import Map from "@/components/map/Map";
+import MapView from "@/components/map/Map";
 import ActivityTypeModal from "@/components/ui/recorder/ActivityTypeModal";
 import BottomControlPanel from "@/components/ui/recorder/BottomControlPanel";
 import FloatingMapControls from "@/components/ui/recorder/FloatingMapControls";
@@ -91,7 +91,7 @@ export default function RecorderScreen() {
 		<View className="flex-1 bg-slate-900 relative">
 			{/* Fullscreen Map Background */}
 			<View className="absolute inset-0">
-				<Map
+				<MapView
 					providerId={providerId}
 					isStatic={false}
 					userLocation={

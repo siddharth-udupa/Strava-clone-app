@@ -95,13 +95,14 @@ export default function OnboardingWizard({ userName, userId, submitPreferences }
         </p>
 
         {/* Slide content */}
-        <div className="min-h-[340px]">
+        <div className="min-h-85">
           {slides[step]}
         </div>
 
         {/* Navigation */}
         <div className="flex justify-between mt-8">
           <button
+            type="button"
             onClick={back}
             disabled={step === 0}
             className="px-5 py-2.5 rounded-lg text-sm font-medium text-neutral-400 hover:text-white transition-colors disabled:opacity-0 disabled:pointer-events-none"
@@ -111,6 +112,7 @@ export default function OnboardingWizard({ userName, userId, submitPreferences }
 
           {step < TOTAL_STEPS - 1 ? (
             <button
+              type="button"
               onClick={next}
               className="px-6 py-2.5 rounded-lg text-sm font-medium bg-stravaorange text-white hover:bg-stravaorange/90 transition-colors"
             >
@@ -118,6 +120,7 @@ export default function OnboardingWizard({ userName, userId, submitPreferences }
             </button>
           ) : (
             <button
+              type="button"
               onClick={handleSubmit}
               disabled={isPending}
               className="px-6 py-2.5 rounded-lg text-sm font-medium bg-stravaorange text-white hover:bg-stravaorange/90 transition-colors disabled:opacity-60"

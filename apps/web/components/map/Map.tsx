@@ -13,6 +13,6 @@ type MapProps = {
   isChangeable: boolean
 }
 
-export default function Map({ encodedPolyline, isStatic, isChangeable }: MapProps) {
+export default function MapView({ encodedPolyline, isStatic, isChangeable }: MapProps) {
   return <MapClient encodedPolyline={encodedPolyline} isStatic={isStatic} isChangeable={isChangeable} />
 }

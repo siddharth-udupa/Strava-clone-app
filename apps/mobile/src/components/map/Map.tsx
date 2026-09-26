@@ -23,7 +23,7 @@ export type MapProps = {
   recenterTrigger?: number
 }
 
-export default function Map({
+export default function MapView({
   encodedPolyline,
   isStatic = false,
   providerId = DEFAULT_TILE_PROVIDER,

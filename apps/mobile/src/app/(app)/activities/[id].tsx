@@ -8,7 +8,7 @@ import Animated, {
   useAnimatedStyle,
   withSpring,
 } from "react-native-reanimated"
-import Map from "@/components/map/Map"
+import MapView from "@/components/map/Map"
 import TileProviderPicker from "@/components/map/TileProviderPicker"
 import { DEFAULT_TILE_PROVIDER, type TileProviderId } from "@repo/maps"
 import { metersToDistance, metersToElevation, formatDurationShort, formatPace } from "@repo/units"
@@ -229,7 +229,7 @@ export default function ActivityDetailScreen() {
 
       {/* MAP LAYER (Interactive & Fixed Background Map) */}
       <View className="flex-1">
-        <Map
+        <MapView
           encodedPolyline={data.encodedPolyline || undefined}
           isStatic={false}
           providerId={currentProviderId}
