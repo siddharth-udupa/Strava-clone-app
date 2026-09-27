@@ -47,6 +47,10 @@ Responses carry an ETag (the tile coordinate) and an immutable
 in TMS, so the Y flip is handled in the lookup — what you request is plain XYZ.
 An invalid coordinate gets a 400 with the validation issues.
 
+A `pbf` tile is served as the stored gzipped bytes with `content-encoding:
+gzip`, which is what makes MapLibre unpack it before parsing, and every response
+allows any origin so browser clients can read the tiles.
+
 ## Layout
 
 Cpeak has no plugin system, so `src/routes/*.ts` export plain functions that

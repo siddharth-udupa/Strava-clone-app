@@ -1,6 +1,6 @@
 import type { MbtilesDb } from "@repo/tiles"
 import { ZodError } from "@repo/validation"
-import cpeak, { type Cpeak } from "cpeak"
+import cpeak, { cors, type Cpeak } from "cpeak"
 import { systemRoutes } from "./routes/system.js"
 import { tileRoutes } from "./routes/tiles.js"
 
@@ -38,6 +38,10 @@ function messageOf(error: unknown): string {
  */
 export function buildServer({ db }: ServerOptions): Cpeak {
   const app = cpeak()
+
+  // Map clients run in a browser or an app, so they ask for tiles from another
+  // origin than this service. Reads are public, so every origin is allowed.
+  app.beforeEach(cors())
 
   // Every throw and every rejected handler promise ends up here, which makes
   // this the one place that decides what a client is told about a failure.

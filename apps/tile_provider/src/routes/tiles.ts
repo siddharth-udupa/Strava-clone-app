@@ -50,12 +50,13 @@ export function tileRoutes(app: Cpeak, { db }: TileRoutesOptions) {
       return
     }
 
-    // For format=pbf the stored bytes are gzipped MVT. They are sent as-is with
-    // no content-encoding: every vector tile client unpacks the payload itself,
-    // and claiming an encoding we did not apply would break the ones that
-    // cannot read it. Cpeak has no binary helper, so the buffer goes straight
-    // onto the Node response.
+    // For format=pbf the stored bytes are gzipped MVT, and they go out as they
+    // are: `content-encoding: gzip` is what tells the client to unpack them
+    // before parsing. MapLibre GL JS hands the response straight to its tile
+    // parser, so without the header it fails on the compressed bytes. Cpeak has
+    // no binary helper, so the buffer goes straight onto the Node response.
     response.setHeader("content-type", MVT_CONTENT_TYPE)
+    response.setHeader("content-encoding", "gzip")
     response.setHeader("content-length", tile.tileData.byteLength)
     response.status(200).end(tile.tileData)
   }

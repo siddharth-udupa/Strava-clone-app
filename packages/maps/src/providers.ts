@@ -1,3 +1,5 @@
+import { southIndiaLayers } from "./styles/southIndia"
+import { TILE_GLYPHS_URL, TILE_SERVER_URL } from "./tileServer"
 import type { TileProvider } from "./types"
 
 export const tileProviders = {
@@ -12,61 +14,6 @@ export const tileProviders = {
     maxZoom: 19,
   },
 
-  cartoVoyager: {
-    id: "cartoVoyager",
-    name: "CartoDB Voyager (Modern & Colorful)",
-    type: "raster",
-    url: "https://{s}.basemaps.cartocdn.com/rastertiles/voyager_labels_under/{z}/{x}/{y}{r}.png",
-    attribution:
-      '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>',
-    tileSize: 256,
-    maxZoom: 20,
-  },
-
-  cartoPositron: {
-    id: "cartoPositron",
-    name: "CartoDB Positron (Minimal Light)",
-    type: "raster",
-    url: "https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png",
-    attribution:
-      '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>',
-    tileSize: 256,
-    maxZoom: 20,
-  },
-
-  cartoDark: {
-    id: "cartoDark",
-    name: "CartoDB Dark Matter (Sleek Dark)",
-    type: "raster",
-    url: "https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png",
-    attribution:
-      '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>',
-    tileSize: 256,
-    maxZoom: 20,
-  },
-
-  cyclosm: {
-    id: "cyclosm",
-    name: "CyclOSM (Cycling Infrastructure)",
-    type: "raster",
-    url: "https://{s}.tile-cyclosm.openstreetmap.fr/cyclosm/{z}/{x}/{y}.png",
-    attribution:
-      'Map data: &copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors, Style: &copy; <a href="https://github.com/cyclosm/cyclosm-cartocss-style">CyclOSM</a>',
-    tileSize: 256,
-    maxZoom: 20,
-  },
-
-  opentopo: {
-    id: "opentopo",
-    name: "OpenTopoMap (Topographic Terrain)",
-    type: "raster",
-    url: "https://{s}.tile.opentopomap.org/{z}/{x}/{y}.png",
-    attribution:
-      'Map data: &copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors, <a href="http://viewfinderpanoramas.org">SRTM</a> | Map style: &copy; <a href="https://opentopomap.org">OpenTopoMap</a> (<a href="https://creativecommons.org/licenses/by-sa/3.0/">CC-BY-SA</a>)',
-    tileSize: 256,
-    maxZoom: 17,
-  },
-
   esriSatellite: {
     id: "esriSatellite",
     name: "Esri World Imagery (Satellite)",
@@ -78,17 +25,22 @@ export const tileProviders = {
     maxZoom: 19,
   },
 
-  esriGray: {
-    id: "esriGray",
-    name: "Esri Light Gray Canvas",
-    type: "raster",
-    url: "https://server.arcgisonline.com/ArcGIS/rest/services/Canvas/World_Light_Gray_Base/MapServer/tile/{z}/{y}/{x}",
-    attribution: "Tiles &copy; Esri &mdash; Esri, DeLorme, NAVTEQ",
-    tileSize: 256,
-    maxZoom: 16,
+  southIndia: {
+    id: "southIndia",
+    name: "South India (Local mbtiles)",
+    type: "vector",
+    url: `${TILE_SERVER_URL}/tiles/{z}/{x}/{y}.pbf`,
+    attribution:
+      '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
+    glyphs: TILE_GLYPHS_URL,
+    minZoom: 4,
+    maxZoom: 12,
+    bounds: [73.193, 7.812, 81.638, 16.479],
+    center: [77.4155, 12.1455, 8],
+    layers: southIndiaLayers,
   },
 } satisfies Record<string, TileProvider>
 
 export type TileProviderId = keyof typeof tileProviders
 
-export const DEFAULT_TILE_PROVIDER: TileProviderId = "cartoVoyager"
+export const DEFAULT_TILE_PROVIDER: TileProviderId = "openstreetmap"
