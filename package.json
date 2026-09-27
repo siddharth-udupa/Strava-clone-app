@@ -8,6 +8,7 @@
     "web": "pnpm --filter web dev",
     "app": "pnpm --filter mobile dev",
     "app:android": "pnpm --filter mobile android",
+    "tiles": "pnpm --filter tile_provider dev",
     "lint": "biome lint",
     "dbg": "pnpm --filter db dbg",
     "dbm": "pnpm --filter db dbm",
