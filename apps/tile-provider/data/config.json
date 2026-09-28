@@ -1,21 +1,54 @@
 {
 	"layers": {
-		"place":               { "minzoom":  0, "maxzoom": 14 },
-		"poi":                 { "minzoom": 12, "maxzoom": 14 },
-		"transportation":      { "minzoom":  4, "maxzoom": 14, "simplify_below": 13, "simplify_level": 0.0003, "simplify_ratio": 2.0 },
-		"transportation_name": { "minzoom": 10, "maxzoom": 14 },
-		"building":            { "minzoom": 13, "maxzoom": 14 },
-		"water":               { "minzoom":  6, "maxzoom": 14, "simplify_below": 12, "simplify_level": 0.0003, "simplify_ratio": 2.0 },
-		"waterway":            { "minzoom":  6, "maxzoom": 14, "simplify_below": 12, "simplify_level": 0.0003, "simplify_ratio": 2.0 }
+		"place": {
+			"minzoom": 0,
+			"maxzoom": 14
+		},
+		"transportation": {
+			"minzoom": 4,
+			"maxzoom": 14,
+			"simplify_below": 13,
+			"simplify_level": 0.0003,
+			"simplify_ratio": 2.0
+		},
+		"transportation_name": {
+			"minzoom": 8,
+			"maxzoom": 14
+		},
+		"water": {
+			"minzoom": 5,
+			"maxzoom": 14,
+			"simplify_below": 12,
+			"simplify_level": 0.0005,
+			"simplify_ratio": 2.0
+		},
+		"waterway": {
+			"minzoom": 7,
+			"maxzoom": 14,
+			"simplify_below": 12,
+			"simplify_level": 0.0005,
+			"simplify_ratio": 2.0
+		},
+		"building": {
+			"minzoom": 13,
+			"maxzoom": 14,
+			"simplify_below": 14,
+			"simplify_level": 0.0001,
+			"simplify_ratio": 2.0
+		},
+		"poi": {
+			"minzoom": 13,
+			"maxzoom": 14
+		}
 	},
 	"settings": {
 		"minzoom": 4,
-		"maxzoom": 12,
-		"basezoom": 12,
+		"maxzoom": 14,
+		"basezoom": 14,
 		"include_ids": false,
-		"name": "Tilemaker example",
-		"version": "0.1",
-		"description": "Sample vector tiles for Tilemaker",
+		"name": "Strava Map",
+		"version": "1.0",
+		"description": "Optimized vector tiles for a Strava-style activity map",
 		"compress": "gzip"
 	}
 }
