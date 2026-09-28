@@ -46,9 +46,6 @@ console.log(
     `zoom ${metadata.minzoom}-${metadata.maxzoom} from ${env.dbPath}`
 )
 
-// `listen` reports success through its callback only. A port that is already
-// taken arrives as an 'error' event instead, which would otherwise go
-// unhandled.
 app.server.on("error", (error) => {
   console.error(`Tile server could not start: ${error.message}`)
   process.exit(1)

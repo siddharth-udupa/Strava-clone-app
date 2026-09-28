@@ -6,8 +6,6 @@ type SystemRoutesOptions = {
 }
 
 export function systemRoutes(app: Cpeak, { db }: SystemRoutesOptions) {
-  // Reads the metadata table, so a tileset that cannot be read surfaces here
-  // rather than as a 404 on every tile.
   const health: Handler = async (_request, response) => {
     const metadata = await getMbtilesMetadata(db)
 

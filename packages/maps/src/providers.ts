@@ -43,4 +43,4 @@ export const tileProviders = {
 
 export type TileProviderId = keyof typeof tileProviders
 
-export const DEFAULT_TILE_PROVIDER: TileProviderId = "openstreetmap"
+export const DEFAULT_TILE_PROVIDER: TileProviderId = "southIndia"

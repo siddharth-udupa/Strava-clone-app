@@ -1,0 +1,13 @@
+# dependencies
+node_modules/
+
+# local sqlite databases
+*.mbtiles
+*.mbtiles-wal
+*.mbtiles-shm
+*.pbf
+*.osm.pbf
+*.pmtiles
+
+# environment
+.env

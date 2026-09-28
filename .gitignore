@@ -11,9 +11,6 @@ node_modules
 # logs
 *.log
 
-# local sqlite databases
-data/
-
 # OS junk
 .DS_Store
 

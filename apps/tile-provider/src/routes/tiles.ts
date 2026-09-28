@@ -11,10 +11,7 @@ type TileRoutesOptions = {
   db: MbtilesDb
 }
 
-/** What a gzipped Mapbox Vector Tile is served as. */
 const MVT_CONTENT_TYPE = "application/vnd.mapbox-vector-tile"
-
-// Tileset tiles never change, so clients can hold onto them.
 const CACHE_CONTROL = "public, max-age=86400, immutable"
 
 /**
@@ -31,8 +28,6 @@ export function tileRoutes(app: Cpeak, { db }: TileRoutesOptions) {
     const coord = parseCoord(request.params)
     const tile = await getTile(db, coord)
 
-    // No tile for that coordinate: outside the tileset's zoom range, or an area
-    // the extract does not cover.
     if (!tile) {
       return response
         .status(404)

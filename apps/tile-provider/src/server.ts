@@ -39,12 +39,8 @@ function messageOf(error: unknown): string {
 export function buildServer({ db }: ServerOptions): Cpeak {
   const app = cpeak()
 
-  // Map clients run in a browser or an app, so they ask for tiles from another
-  // origin than this service. Reads are public, so every origin is allowed.
   app.beforeEach(cors())
 
-  // Every throw and every rejected handler promise ends up here, which makes
-  // this the one place that decides what a client is told about a failure.
   app.handleErr((error, _request, response) => {
     // Cpeak drops the socket before calling us once bytes are out, so there is
     // no response left to write to.
@@ -56,12 +52,8 @@ export function buildServer({ db }: ServerOptions): Cpeak {
         .json({ error: "Invalid tile coordinate", issues: error.issues })
     }
 
-    // Cpeak ships no logger (it has no dependencies), so unexpected failures go
-    // to stderr as they are.
     console.error(error)
 
-    // A deliberate client error keeps its message; anything else becomes a 500
-    // and must not leak internals.
     const status = statusOf(error)
     if (status !== undefined && status < 500) {
       return response.status(status).json({ error: messageOf(error) })
