@@ -1,5 +1,7 @@
 import { useState } from "react"
+import type { PreferencesType } from "@repo/types"
 import { authClient } from "@/lib/auth-client"
+import { DEFAULT_PREFERENCES, applyServerPreferences } from "@/lib/preferencesStore"
 
 const API_URL = process.env.EXPO_PUBLIC_API_URL!
 
@@ -13,14 +15,15 @@ export type OnboardingPrefs = {
   timeFormat: "12h" | "24h"
 }
 
+/** Derived from the column defaults so the two can't drift apart. */
 export const DEFAULT_PREFS: OnboardingPrefs = {
-  theme: "system",
-  distanceUnit: "metric",
-  elevationUnit: "meters",
-  paceUnit: "min/km",
-  speedUnit: "km/h",
-  weightUnit: "kg",
-  timeFormat: "24h",
+  theme: DEFAULT_PREFERENCES.theme,
+  distanceUnit: DEFAULT_PREFERENCES.distanceUnit,
+  elevationUnit: DEFAULT_PREFERENCES.elevationUnit,
+  paceUnit: DEFAULT_PREFERENCES.paceUnit,
+  speedUnit: DEFAULT_PREFERENCES.speedUnit,
+  weightUnit: DEFAULT_PREFERENCES.weightUnit,
+  timeFormat: DEFAULT_PREFERENCES.timeFormat,
 }
 
 export function useOnboarding() {
@@ -63,7 +66,7 @@ export function useOnboarding() {
     setError(null)
     setIsLoading(true)
     try {
-      const res = await authClient.$fetch(`${API_URL}/api/preferences`, {
+      const res = await authClient.$fetch<PreferencesType>(`${API_URL}/api/preferences`, {
         method: "PATCH",
         body: JSON.stringify(data),
         headers: { "Content-Type": "application/json" },
@@ -72,6 +75,12 @@ export function useOnboarding() {
         const msg = (res.error as any)?.message ?? "Failed to save preferences."
         setError(msg)
         return msg
+      }
+      // Write through to the device copy. The server returns the full merged
+      // row, so this is authoritative — without it the next launch would read
+      // a stale `onBoarded: false` off disk and replay onboarding.
+      if (res.data) {
+        await applyServerPreferences(res.data)
       }
       return null
     } catch (err) {

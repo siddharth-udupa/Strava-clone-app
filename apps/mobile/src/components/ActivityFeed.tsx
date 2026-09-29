@@ -1,9 +1,9 @@
 import { FlatList, TouchableOpacity, View, Text, ActivityIndicator } from "react-native"
 import ActivtyCard from "./ActivtyCard"
 import { Ionicons } from "@expo/vector-icons"
-import type { ActivityCardType, PreferencesType } from "@repo/types"
-import { useEffect, useState } from "react"
-import { authClient, type User } from "@/lib/auth-client"
+import type { ActivityCardType } from "@repo/types"
+import { DEFAULT_PREFERENCES, usePreferences } from "@/lib/preferencesStore"
+import type { User } from "@/lib/auth-client"
 
 interface ActivityFeedProps {
   user: User
@@ -15,24 +15,6 @@ interface ActivityFeedProps {
   error?: string | null
 }
 
-const API_URL = process.env.EXPO_PUBLIC_API_URL!
-
-// Module-level cache for user preferences to prevent fetching on every tab switch
-let cachedPreferences: PreferencesType | null = null
-
-const DEFAULT_PREFERENCES: PreferencesType = {
-  updatedAt: null,
-  userId: "",
-  onBoarded: true,
-  theme: "light",
-  distanceUnit: "metric",
-  elevationUnit: "meters",
-  paceUnit: "min/km",
-  speedUnit: "km/h",
-  weightUnit: "kg",
-  timeFormat: "12h",
-}
-
 export default function ActivityFeed({
   user,
   activities,
@@ -42,29 +24,7 @@ export default function ActivityFeed({
   isLoading = false,
   error = null,
 }: ActivityFeedProps) {
-  const [preferences, setPreference] = useState<PreferencesType>(
-    cachedPreferences ?? DEFAULT_PREFERENCES
-  )
-
-  useEffect(() => {
-    if (cachedPreferences) return
-
-    async function fetchPreferences() {
-      try {
-        const res = await authClient.$fetch<PreferencesType>(
-          `${API_URL}/api/preferences`
-        )
-        if (res?.data) {
-          cachedPreferences = res.data
-          setPreference(res.data)
-        }
-      } catch (err) {
-        console.error("Using default preferences due to fetch error:", err)
-      }
-    }
-    fetchPreferences()
-  }, [])
-
+  const { preferences } = usePreferences()
 
   if (isLoading && activities.length === 0) {
     return (
@@ -82,7 +42,11 @@ export default function ActivityFeed({
       data={activities}
       keyExtractor={(item) => item.activityId}
       renderItem={({ item }) => (
-        <ActivtyCard activity={item} preferences={preferences} user={user} />
+        <ActivtyCard
+          activity={item}
+          preferences={preferences ?? DEFAULT_PREFERENCES}
+          user={user}
+        />
       )}
       ListHeaderComponent={ListHeaderComponent}
       ListEmptyComponent={

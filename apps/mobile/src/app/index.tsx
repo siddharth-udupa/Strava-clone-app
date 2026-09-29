@@ -1,29 +1,13 @@
 import { Redirect } from "expo-router"
-import { useSession } from "@/lib/auth-client"
 import { View, ActivityIndicator } from "react-native"
-import { useEffect, useState } from "react"
-import { authClient } from "@/lib/auth-client"
-
-const API_URL = process.env.EXPO_PUBLIC_API_URL!
+import { useSession } from "@/lib/auth-client"
+import { usePreferences } from "@/lib/preferencesStore"
 
 export default function Index() {
   const { data: session, isPending } = useSession()
-  const [onBoarded, setOnBoarded] = useState<boolean | null>(null)
+  const { status, preferences } = usePreferences()
 
-  useEffect(() => {
-    if (!session) return
-    authClient.$fetch<{ onBoarded: boolean }>(`${API_URL}/api/preferences`)
-      .then((res) => {
-        setOnBoarded(res.data?.onBoarded ?? false)
-      })
-      .catch(() => {
-        // On network error default to onboarding so user can still proceed
-        setOnBoarded(false)
-      })
-  }, [session])
-
-  // Show spinner while session resolves or while fetching preferences
-  if (isPending || (session && onBoarded === null)) {
+  if (isPending) {
     return (
       <View style={{ flex: 1, justifyContent: "center", alignItems: "center" }}>
         <ActivityIndicator size="large" color="#FC4C02" />
@@ -32,10 +16,23 @@ export default function Index() {
   }
 
   if (!session) {
-    return <Redirect href={"/(auth)/sign-in" as any} />
+    return <Redirect href={"/(auth)/auth" as any} />
   }
 
-  if (!onBoarded) {
+  // "ready" means the answer came from the device copy, or from the one
+  // request we still owe on a device that has never seen this account.
+  if (status !== "ready") {
+    return (
+      <View style={{ flex: 1, justifyContent: "center", alignItems: "center" }}>
+        <ActivityIndicator size="large" color="#FC4C02" />
+      </View>
+    )
+  }
+
+  // No preferences at all means we could not reach the server on a device with
+  // no local copy. Sending them to onboarding keeps the existing behaviour:
+  // they can complete or skip it and continue either way.
+  if (!preferences?.onBoarded) {
     return <Redirect href={"/(onboarding)" as any} />
   }
 

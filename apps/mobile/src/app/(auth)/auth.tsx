@@ -2,6 +2,7 @@ import { useState } from "react"
 import { View, Text, TextInput, TouchableOpacity, KeyboardAvoidingView, Platform, ScrollView, ActivityIndicator, Alert } from "react-native"
 import { useRouter } from "expo-router"
 import { signIn, signUp } from "@/lib/auth-client"
+import { hydratePreferences } from "@/lib/preferencesStore"
 
 type Tab = "signin" | "signup"
 
@@ -21,20 +22,33 @@ export default function SignInScreen() {
 
     setLoading(true)
     try {
+      let userId: string | undefined
+
       if (tab === "signup") {
-        const { error } = await signUp.email({ name, email, password })
+        const { data, error } = await signUp.email({ name, email, password })
         if (error) {
           Alert.alert("Sign Up Failed", error.message ?? "Something went wrong")
           return
         }
+        userId = data?.user?.id
       } else {
-        const { error } = await signIn.email({ email, password })
+        const { data, error } = await signIn.email({ email, password })
         if (error) {
           Alert.alert("Sign In Failed", error.message ?? "Something went wrong")
           return
         }
+        userId = data?.user?.id
       }
-      router.push("/(app)/dashboard")
+
+      // First sign in for this account: pull preferences once and keep them on
+      // the device, so the onboarding gate never has to ask again.
+      if (userId) {
+        await hydratePreferences(userId)
+      }
+
+      // Route through the index gate rather than straight to the dashboard, so
+      // a brand-new account still lands in onboarding.
+      router.replace("/" as any)
     }
     catch (err) {
       Alert.alert("Error", err instanceof Error ? err.message : "An unexpected error occurred")
@@ -56,7 +70,9 @@ export default function SignInScreen() {
         return
       }
       if (data) {
-        router.replace("/(app)/dashboard" as any)
+        // The session lands via the deep link, so the id isn't known here yet.
+        // The gate re-reads it from the session and hydrates on its own.
+        router.replace("/" as any)
       }
     } catch (err) {
       Alert.alert("OAuth Error", err instanceof Error ? err.message : "Google sign-in failed")

@@ -6,6 +6,7 @@ import { Redirect, useRouter } from "expo-router"
 import { Ionicons } from "@expo/vector-icons"
 import ActivityFeed from "@/components/ActivityFeed"
 import { useActivities } from "@/hooks/useActivities"
+import { clearPreferences } from "@/lib/preferencesStore"
 
 // Lazy-load MapScreen component
 const LazyMapScreen = lazy(() => import("@/components/MapScreen"))
@@ -26,6 +27,9 @@ export default function DashboardScreen() {
 
   const handleSignOut = async () => {
     await signOut()
+    // Drop the in-memory snapshot so the next account to sign in on this
+    // device never sees the previous one's units or theme.
+    clearPreferences()
   }
 
   // Bottom bar height: pt-2 (8) + icon+label area (~44) + paddingBottom = ~52 + Math.max(insets.bottom, 25)
