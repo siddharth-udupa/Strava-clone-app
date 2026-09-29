@@ -18,6 +18,15 @@ export const auth = betterAuth({
   emailAndPassword: {
     enabled: true
   },
+  session: {
+    cookieCache: {
+      enabled: true,
+      // 5 minutes. This is the upper bound on how long a revoked session can
+      // stay live on a device, so keep it short.
+      maxAge: 5 * 60,
+      strategy: "compact"
+    }
+  },
   plugins: [
     expo()
   ],
